@@ -1,46 +1,58 @@
 # SIMAS - Sistem Informasi Sarana & Prasarana Kampus
-### Fullstack Web Application: Laravel 11 MVC (Eloquent ORM) + SQLite + Tailwind CSS + RBAC
+### Fullstack Web Application: PHP Native (PDO) + SQLite + Tailwind CSS + JavaScript + RBAC
 
-Aplikasi manajemen sarana dan prasarana kampus berbasis arsitektur **Laravel 11 MVC (Model - View - Controller)** dengan **6 Menu Inti** dan pemisahan hak akses **4 Role (RBAC)**.
+Aplikasi manajemen sarana dan prasarana kampus dengan **REST API PHP Native**, frontend **HTML + Tailwind CSS + Vanilla JavaScript**, database **SQLite**, serta pemisahan hak akses **4 Role (RBAC)**.
+
+> Catatan: folder `app/`, `routes/`, `resources/views/`, `database/migrations/`, `artisan`, dan `composer.json` adalah **scaffold Laravel yang tidak dipakai** oleh aplikasi ini. Aplikasi berjalan dengan PHP native melalui `router.php` + `backend-php/`.
 
 ---
 
-## 📂 1. Struktur Folder Laravel 11 MVC (Mudah Dipresentasikan)
-
-Seluruh kode backend disusun mengikuti standar **Laravel 11** agar ringkas, rapi, dan mudah dijelaskan saat presentasi:
+## 📂 1. Arsitektur & Struktur Folder
 
 ```text
-├── app/
-│   ├── Http/
-│   │   ├── Controllers/
-│   │   │   ├── AuthController.php        # Login, Sesi & Daftar Pengguna
-│   │   │   ├── DashboardController.php   # Statistik KPI Dashboard per Role
-│   │   │   ├── AssetController.php       # CRUD Master Inventaris Aset
-│   │   │   ├── LocationController.php    # CRUD Gedung & Ketersediaan Ruangan
-│   │   │   ├── LoanController.php        # Peminjaman, Approve/Reject & Pengembalian
-│   │   │   ├── TicketController.php      # Kanban Pemeliharaan & Biaya Servis
-│   │   │   └── ReportController.php      # Laporan & Log Audit Aktivitas
-│   │   └── Middleware/
-│   │       └── RoleMiddleware.php        # Pembatas Hak Akses 4 Role (RBAC)
-│   └── Models/
-│       ├── User.php                      # Eloquent Model Pengguna & Role
-│       ├── Asset.php                     # Eloquent Model Inventaris Aset
-│       ├── Location.php                  # Eloquent Model Gedung & Ruangan
-│       ├── Loan.php                      # Eloquent Model Peminjaman Sarana
-│       ├── Ticket.php                    # Eloquent Model Tiket Pemeliharaan
-│       └── ActivityLog.php               # Eloquent Model Audit Log
-├── routes/
-│   ├── web.php                           # Route 6 Menu Utama + Middleware Role
-│   └── api.php                           # Route RESTful API (Route::apiResource)
-├── database/
-│   ├── migrations/
-│   │   └── 2025_01_01_000001_create_simas_tables.php  # Skema Tabel Database
-│   └── seeders/
-│       └── DatabaseSeeder.php            # Seeder 4 Akun Demo & Data Awal
-├── pages/                                # View Halaman Frontend (6 Menu Inti)
-├── js/                                   # Modul Interaktif Frontend & RBAC Client
-├── composer.json                         # Konfigurasi Paket Laravel 11
-└── artisan                               # CLI Laravel Artisan
+├── pages/                    # Halaman frontend (HTML statis)
+│   ├── login.html            # Login, registrasi & ACC akun
+│   ├── index.html            # Dashboard (adaptif per role)
+│   ├── aset.html             # Inventaris aset
+│   ├── gedung.html           # Gedung & ruangan
+│   ├── peminjaman.html       # Peminjaman & pengembalian
+│   ├── antrean.html          # Antrean persetujuan
+│   ├── tiket.html            # Pemeliharaan (Kanban)
+│   ├── mutasi.html           # Mutasi aset
+│   ├── stock.html            # Stock opname
+│   ├── laporan.html          # Laporan & audit trail
+│   ├── pengguna.html         # Kelola akun & ACC pendaftaran
+│   └── ...                   # Halaman pendukung lainnya
+├── js/                       # Logika frontend & RBAC client
+│   ├── auth.js               # Sesi login & akun demo
+│   ├── rbac.js               # Permission & proteksi halaman
+│   ├── api.js                # Client REST API
+│   ├── navigation.js         # Sidebar & tema
+│   └── ...                   # Modul per halaman
+├── css/                      # Stylesheet tambahan
+├── backend-php/              # REST API PHP Native (dipakai saat ini)
+│   ├── routes.php            # Seluruh endpoint /api/...
+│   ├── db.php                # Koneksi PDO SQLite & seeding
+│   └── helpers.php           # Helper JSON, CORS & log aktivitas
+├── backend/                  # Alternatif backend Node.js Express
+│   ├── server.js
+│   └── db.js
+├── data/
+│   └── simas.db              # Database SQLite (dibuat otomatis)
+├── assets/                   # Gambar aset & avatar
+├── router.php                # Entry point PHP built-in server
+├── index.php                 # Entry point untuk Apache/XAMPP
+└── package.json              # Script Node (opsional)
+```
+
+**Alur aplikasi:**
+
+```text
+Browser (pages/*.html + js/*.js)
+        ↓ fetch /api/...
+PHP Native (router.php → backend-php/routes.php)
+        ↓ PDO
+SQLite (data/simas.db)
 ```
 
 ---
@@ -58,17 +70,35 @@ Seluruh kode backend disusun mengikuti standar **Laravel 11** agar ringkas, rapi
 
 ## 🚀 3. Cara Menjalankan Aplikasi
 
-### A. Menjalankan di Lingkungan Laravel (Lokal / Laragon / XAMPP)
+### A. PHP Built-in Server (utama)
+
 ```bash
-composer install
-cp .env.example .env
-php artisan key:generate
-php artisan migrate --seed
-php artisan serve --port=3000
+php -S localhost:3000 router.php
 ```
 
-### B. Menjalankan di Cloud Preview / Node.js Runner
+Atau lewat npm:
+
 ```bash
+npm run dev:php
+```
+
+Buka browser: **`http://localhost:3000/pages/login.html`**
+
+### B. XAMPP / Apache
+
+Arahkan document root ke folder project ini. `index.php` akan otomatis mengarahkan ke halaman login dan meneruskan request `/api/...` ke `backend-php/routes.php`.
+
+### C. Node.js Express (alternatif)
+
+```bash
+npm install
 npm run dev
 ```
-Akses di browser: **`http://localhost:3000`**
+
+---
+
+## 🗄️ 4. Catatan Database
+
+- Database SQLite berada di `data/simas.db` dan **dibuat otomatis** saat pertama kali dijalankan.
+- Seed data peminjaman sengaja dinonaktifkan agar daftar peminjaman kosong saat demo/presentasi. Data baru tetap bisa dibuat lewat menu Peminjaman.
+- Akun demo (admin, petugas, pimpinan, peminjam) dibuat otomatis saat seeding.

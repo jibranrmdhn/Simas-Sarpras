@@ -31,7 +31,7 @@ if ($path === '/api/auth/login' && $method === 'POST') {
     }
 
     $stmt = $pdo->prepare("
-        SELECT id, username, nama, nip, email, role, avatar, created_at 
+        SELECT id, username, nama, nip, email, unit, account_type, role, status, rejection_reason, avatar, created_at 
         FROM users 
         WHERE (LOWER(username) = LOWER(?) OR nip = ? OR LOWER(email) = LOWER(?)) 
           AND password = ?
@@ -43,14 +43,103 @@ if ($path === '/api/auth/login' && $method === 'POST') {
         jsonResponse(['success' => false, 'message' => 'Username/NIP atau kata sandi tidak cocok.'], 401);
     }
 
+    $accountStatus = strtolower($user['status'] ?? 'active');
+    if ($accountStatus === 'pending') {
+        jsonResponse([
+            'success' => false,
+            'code' => 'ACCOUNT_PENDING',
+            'message' => 'Akun Anda sedang menunggu persetujuan (ACC) dari Admin Sarpras. Silakan tunggu konfirmasi Administrator.'
+        ], 403);
+    }
+
+    if ($accountStatus === 'rejected') {
+        $reasonText = !empty($user['rejection_reason']) ? " Alasan: {$user['rejection_reason']}" : '';
+        jsonResponse([
+            'success' => false,
+            'code' => 'ACCOUNT_REJECTED',
+            'message' => "Pendaftaran akun Anda ditolak oleh Admin Sarpras.{$reasonText}"
+        ], 403);
+    }
+
     logActivity($pdo, $user['nama'], 'Login', "Pengguna login sebagai {$user['role']}");
     jsonResponse(['success' => true, 'message' => "Selamat datang, {$user['nama']}!", 'user' => $user]);
 }
 
+if ($path === '/api/auth/register' && $method === 'POST') {
+    $body = getJsonInput();
+    $username = trim($body['username'] ?? '');
+    $password = trim($body['password'] ?? '');
+    $nama = trim($body['nama'] ?? '');
+    $nip = trim($body['nip'] ?? '');
+    $email = trim($body['email'] ?? '');
+    $unit = trim($body['unit'] ?? '');
+    $role = strtolower(trim($body['role'] ?? 'peminjam'));
+    $accountType = strtolower(trim($body['account_type'] ?? 'mahasiswa'));
+
+    if (empty($username) || empty($password) || empty($nama) || empty($email)) {
+        jsonResponse(['success' => false, 'message' => 'Nama lengkap, username, email institusi, dan kata sandi wajib diisi.'], 400);
+    }
+    if (strlen($password) < 6) {
+        jsonResponse(['success' => false, 'message' => 'Kata sandi minimal 6 karakter.'], 400);
+    }
+    if ($role !== 'peminjam') {
+        jsonResponse([
+            'success' => false,
+            'message' => 'Pendaftaran mandiri hanya tersedia untuk akun Peminjam (Mahasiswa / Dosen). Akun Admin, Petugas, dan Pimpinan hanya dapat dibuat oleh Admin Sarpras.'
+        ], 400);
+    }
+    if (!in_array($accountType, ['mahasiswa', 'dosen'], true)) {
+        $accountType = 'mahasiswa';
+    }
+    if (empty($nip)) {
+        jsonResponse([
+            'success' => false,
+            'message' => $accountType === 'dosen' ? 'NIP / NIDN wajib diisi untuk pendaftaran Dosen.' : 'NIM wajib diisi untuk pendaftaran Mahasiswa.'
+        ], 400);
+    }
+
+    $check = $pdo->prepare("SELECT id FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)");
+    $check->execute([$username, $email]);
+    if ($check->fetch()) {
+        jsonResponse(['success' => false, 'message' => 'Username atau email institusi sudah terdaftar di sistem.'], 409);
+    }
+
+    $defaultAvatar = $accountType === 'dosen' ? '../assets/avatar_hendro.jpg' : '../assets/avatar_bambang.jpg';
+    $stmt = $pdo->prepare("
+        INSERT INTO users (username, password, nama, nip, email, unit, account_type, role, status, avatar)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'peminjam', 'pending', ?)
+    ");
+    $stmt->execute([$username, $password, $nama, $nip, $email, $unit, $accountType, $defaultAvatar]);
+
+    $newId = (int)$pdo->lastInsertId();
+    $fetch = $pdo->prepare("
+        SELECT id, username, nama, nip, email, unit, account_type, role, status, avatar, created_at
+        FROM users WHERE id = ?
+    ");
+    $fetch->execute([$newId]);
+    $created = $fetch->fetch();
+
+    $typeLabel = $accountType === 'dosen' ? 'Dosen' : 'Mahasiswa';
+    logActivity($pdo, $nama, 'Pendaftaran Akun', "Pengajuan akun Peminjam ({$typeLabel} - {$username}) menunggu ACC Admin");
+    jsonResponse([
+        'success' => true,
+        'message' => "Pendaftaran akun Peminjam ({$typeLabel}) berhasil dikirim! Akun Anda menunggu persetujuan (ACC) Admin Sarpras sebelum dapat digunakan untuk login.",
+        'data' => $created
+    ], 201);
+}
+
 if ($path === '/api/users' && $method === 'GET') {
-    $stmt = $pdo->query("SELECT id, username, nama, nip, email, role, avatar, created_at FROM users ORDER BY id ASC");
-    $users = $stmt->fetchAll();
-    jsonResponse(['success' => true, 'data' => $users]);
+    $status = $_GET['status'] ?? '';
+    $query = "SELECT id, username, nama, nip, email, unit, account_type, role, status, rejection_reason, approved_by, approved_at, avatar, created_at FROM users";
+    $params = [];
+    if (!empty($status)) {
+        $query .= " WHERE status = ?";
+        $params[] = $status;
+    }
+    $query .= " ORDER BY CASE WHEN status = 'pending' THEN 0 WHEN status = 'active' THEN 1 ELSE 2 END, id DESC";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($params);
+    jsonResponse(['success' => true, 'data' => $stmt->fetchAll()]);
 }
 
 if ($path === '/api/users' && $method === 'POST') {
@@ -72,8 +161,8 @@ if ($path === '/api/users' && $method === 'POST') {
 
     $defaultAvatar = $body['avatar'] ?? ($role === 'admin' ? '../assets/avatar_hendro.jpg' : '../assets/avatar_bambang.jpg');
     $stmt = $pdo->prepare("
-        INSERT INTO users (username, password, nama, nip, email, role, avatar)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO users (username, password, nama, nip, email, unit, role, status, approved_by, approved_at, avatar)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'active', 'Admin Sarpras', CURRENT_TIMESTAMP, ?)
     ");
     $stmt->execute([
         $username,
@@ -81,17 +170,116 @@ if ($path === '/api/users' && $method === 'POST') {
         $nama,
         $body['nip'] ?? '',
         $body['email'] ?? '',
+        $body['unit'] ?? '',
         $role,
         $defaultAvatar
     ]);
 
     $newId = (int)$pdo->lastInsertId();
-    $fetch = $pdo->prepare("SELECT id, username, nama, nip, email, role, avatar, created_at FROM users WHERE id = ?");
+    $fetch = $pdo->prepare("SELECT id, username, nama, nip, email, unit, role, status, avatar, created_at FROM users WHERE id = ?");
     $fetch->execute([$newId]);
     $newUser = $fetch->fetch();
 
     logActivity($pdo, 'Admin', 'Tambah Pengguna', "Menambahkan pengguna baru: {$nama} ({$role})");
     jsonResponse(['success' => true, 'message' => 'Pengguna baru berhasil ditambahkan.', 'data' => $newUser], 201);
+}
+
+if ($path === '/api/users/pending' && $method === 'GET') {
+    $stmt = $pdo->query("
+        SELECT id, username, nama, nip, email, unit, account_type, role, status, avatar, created_at
+        FROM users
+        WHERE status = 'pending'
+        ORDER BY id DESC
+    ");
+    $pendingUsers = $stmt->fetchAll();
+    jsonResponse(['success' => true, 'count' => count($pendingUsers), 'data' => $pendingUsers]);
+}
+
+if (preg_match('#^/api/users/(\d+)/approve$#', $path, $matches) && $method === 'PUT') {
+    $body = getJsonInput();
+    $actorRole = strtolower(trim($_SERVER['HTTP_X_USER_ROLE'] ?? ($body['actor_role'] ?? '')));
+    if ($actorRole !== 'admin') {
+        jsonResponse([
+            'success' => false,
+            'message' => 'Akses ditolak: Hanya Admin Sarpras yang berwenang melakukan ACC pendaftaran akun.'
+        ], 403);
+    }
+
+    $id = (int)$matches[1];
+    $userStmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+    $userStmt->execute([$id]);
+    $user = $userStmt->fetch();
+    if (!$user) {
+        jsonResponse(['success' => false, 'message' => 'Pendaftaran akun tidak ditemukan.'], 404);
+    }
+
+    $allowedRoles = ['admin', 'petugas', 'pimpinan', 'peminjam'];
+    $finalRole = (!empty($body['role']) && in_array($body['role'], $allowedRoles, true)) ? $body['role'] : $user['role'];
+    $approver = !empty($body['approved_by']) ? trim($body['approved_by']) : 'Admin Sarpras';
+
+    $update = $pdo->prepare("
+        UPDATE users
+        SET status = 'active', role = ?, rejection_reason = '', approved_by = ?, approved_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ");
+    $update->execute([$finalRole, $approver, $id]);
+
+    $fetch = $pdo->prepare("
+        SELECT id, username, nama, nip, email, unit, role, status, approved_by, approved_at, avatar, created_at
+        FROM users WHERE id = ?
+    ");
+    $fetch->execute([$id]);
+    $updated = $fetch->fetch();
+
+    logActivity($pdo, $approver, 'ACC Pendaftaran Akun', "Menyetujui & mengaktifkan akun {$updated['nama']} (@{$updated['username']}) sebagai {$updated['role']}");
+    jsonResponse([
+        'success' => true,
+        'message' => "Akun {$updated['nama']} (@{$updated['username']}) berhasil di-ACC dan sekarang aktif!",
+        'data' => $updated
+    ]);
+}
+
+if (preg_match('#^/api/users/(\d+)/reject$#', $path, $matches) && $method === 'PUT') {
+    $body = getJsonInput();
+    $actorRole = strtolower(trim($_SERVER['HTTP_X_USER_ROLE'] ?? ($body['actor_role'] ?? '')));
+    if ($actorRole !== 'admin') {
+        jsonResponse([
+            'success' => false,
+            'message' => 'Akses ditolak: Hanya Admin Sarpras yang berwenang menolak pendaftaran akun.'
+        ], 403);
+    }
+
+    $id = (int)$matches[1];
+    $userStmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+    $userStmt->execute([$id]);
+    $user = $userStmt->fetch();
+    if (!$user) {
+        jsonResponse(['success' => false, 'message' => 'Pendaftaran akun tidak ditemukan.'], 404);
+    }
+
+    $reason = !empty($body['reason']) ? trim($body['reason']) : 'Data identitas belum terverifikasi oleh Admin Sarpras.';
+    $approver = !empty($body['approved_by']) ? trim($body['approved_by']) : 'Admin Sarpras';
+
+    $update = $pdo->prepare("
+        UPDATE users
+        SET status = 'rejected', rejection_reason = ?, approved_by = ?, approved_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ");
+    $update->execute([$reason, $approver, $id]);
+
+    $fetch = $pdo->prepare("
+        SELECT id, username, nama, nip, email, unit, role, status, rejection_reason, approved_by, approved_at, avatar, created_at
+        FROM users WHERE id = ?
+    ");
+    $fetch->execute([$id]);
+    $updated = $fetch->fetch();
+
+    logActivity($pdo, $approver, 'Tolak Pendaftaran Akun', "Menolak pendaftaran akun {$updated['nama']} (@{$updated['username']}). Alasan: {$reason}");
+    jsonResponse([
+        'success' => true,
+        'message' => "Pendaftaran akun {$updated['nama']} telah ditolak.",
+        'data' => $updated
+    ]);
 }
 
 if (preg_match('#^/api/users/(\d+)$#', $path, $matches)) {
@@ -761,6 +949,33 @@ if (preg_match('#^/api/loans/(\d+)/return$#', $path, $matches) && $method === 'P
 
     logActivity($pdo, $loan['peminjam_nama'], 'Pengembalian Aset', "Aset {$loan['asset_nama']} ({$loan['kode']}) telah dikembalikan.");
     jsonResponse(['success' => true, 'message' => "Pengembalian aset {$loan['asset_nama']} berhasil dicatat!"]);
+}
+
+if (preg_match('#^/api/loans/(\d+)/request-return$#', $path, $matches) && $method === 'PUT') {
+    $id = (int)$matches[1];
+    $body = getJsonInput();
+
+    $stmt = $pdo->prepare("SELECT * FROM loans WHERE id = ?");
+    $stmt->execute([$id]);
+    $loan = $stmt->fetch();
+    if (!$loan) {
+        jsonResponse(['success' => false, 'message' => 'Data pinjaman tidak ditemukan.'], 404);
+    }
+
+    $catatan = trim($body['catatan'] ?? '');
+    $noteText = $catatan !== ''
+        ? "Pengajuan pengembalian: {$catatan}"
+        : 'Peminjam mengajukan pengembalian. Menunggu verifikasi fisik Petugas Sarpras.';
+
+    $update = $pdo->prepare("UPDATE loans SET status = 'Verifikasi Kembali', catatan = ? WHERE id = ?");
+    $update->execute([$noteText, $id]);
+
+    $requestedBy = !empty($body['requested_by']) ? trim($body['requested_by']) : $loan['peminjam_nama'];
+    logActivity($pdo, $requestedBy, 'Ajukan Pengembalian', "Mengajukan pengembalian {$loan['asset_nama']} ({$loan['kode']})");
+    jsonResponse([
+        'success' => true,
+        'message' => "Pengembalian {$loan['asset_nama']} diajukan! Menunggu verifikasi Petugas Sarpras."
+    ]);
 }
 
 if (preg_match('#^/api/loans/(\d+)$#', $path, $matches) && $method === 'PUT') {

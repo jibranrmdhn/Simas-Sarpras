@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
+    "dev:php": "php -S localhost:3000 router.php",
     "start": "tsx server.ts",
     "build": "vite build",
     "preview": "vite preview",
