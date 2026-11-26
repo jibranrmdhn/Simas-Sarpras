@@ -969,7 +969,7 @@ function updateHeaderAndSidebarUserProfiles(user) {
           <span>Keluar dari Sistem</span>
         </button>
         <div class="px-3.5 py-2.5 rounded-xl bg-[#e6edf8]">
-          <div class="text-[11px] font-extrabold text-[#0f2a71]">SIMAS v2.4 • Laravel 11</div>
+          <div class="text-[11px] font-extrabold text-[#0f2a71]">SIMAS v2.4 • PHP Native</div>
           <div class="text-[10px] text-slate-500 mt-0.5">${rMeta.footerSub}</div>
         </div>
       `;
