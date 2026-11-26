@@ -1,0 +1,37 @@
+/* ===== SIMAS – Laporan & Rangkuman : Komponen & Layout Cetak (Plain CSS) ===== */
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: #f4f7fb;
+  -webkit-font-smoothing: antialiased;
+}
+
+.card-shadow {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+}
+
+.print-only {
+  display: none;
+}
+
+/* Dedicated Print Styling for Official Institution Report */
+@media print {
+  aside, header, #sidebar-overlay, .no-print, button, #filter-section, #toast-container {
+    display: none !important;
+  }
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .card-shadow {
+    box-shadow: none !important;
+    border: 1px solid #94a3b8 !important;
+  }
+  .page-break {
+    page-break-before: always;
+  }
+}

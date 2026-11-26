@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <!-- Early User Session Sync (Mencegah Flash Role saat Load) -->
+  <script>
+    try {
+      window.__SIMAS_USER__ = JSON.parse(localStorage.getItem('simas_current_user') || 'null');
+    } catch (e) {
+      window.__SIMAS_USER__ = null;
+    }
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIMAS - Pengaturan Sistem &amp; Kebijakan Sarpras</title>
+  <meta name="description" content="Konfigurasi parameter sistem, batasan waktu peminjaman, serta backup data inventaris institusi.">
+
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            navy: { DEFAULT: '#0f2a71', dark: '#091a48', light: '#16428c' },
+            canvas: '#f4f7fb',
+            softblue: '#edf4fe',
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f4f7fb;
+      -webkit-font-smoothing: antialiased;
+    }
+    .card-shadow {
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+    }
+  </style>
+</head>
+<body class="bg-[#f4f7fb] text-slate-800 antialiased min-h-screen flex flex-col md:flex-row">
+
+  <!-- Mobile Sidebar Backdrop Overlay -->
+  <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 hidden md:hidden"></div>
+
+  <!-- ================= LEFT SIDEBAR ================= -->
+  <aside id="main-sidebar" class="w-60 shrink-0 bg-[#f0f5fc] border-r border-slate-200/80 flex flex-col fixed md:sticky top-0 h-screen z-40 -translate-x-full md:translate-x-0 transition-transform duration-300">
+    <!-- Brand / Logo Area -->
+    <div class="px-5 pt-5 pb-3">
+      <div class="flex items-center justify-between">
+        <a href="index.html" class="flex items-center gap-3">
+          <!-- Brand Cube Icon -->
+          <div class="w-9 h-9 rounded-xl bg-[#1342b8] flex items-center justify-center text-white shadow-sm shadow-blue-700/25">
+            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-[15px] font-extrabold tracking-tight text-[#0f2a71] leading-none">SIMAS</h1>
+            <p class="text-[10px] text-slate-500 font-medium mt-1">Sistem Sarana &amp; Prasarana</p>
+          </div>
+        </a>
+        <button onclick="toggleSidebar()" class="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Active Role Info Badge (Static Indicator) -->
+      <div id="role-badge" class="mt-3.5 w-full px-3 py-2.5 bg-[#dbe8fb] rounded-xl flex items-center justify-between text-left select-none">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <i data-lucide="shield-check" class="w-4 h-4 text-[#0f2a71] shrink-0"></i>
+          <div class="leading-tight truncate">
+            <span class="text-[10px] text-slate-600 font-semibold block">Peran Aktif</span>
+            <span id="sidebar-role-label" class="text-xs font-bold text-[#0f2a71] truncate block"></span>
+          </div>
+        </div>
+      </div>
+      <script>
+        if (window.__SIMAS_USER__) {
+          var _r = document.getElementById('sidebar-role-label');
+          if (_r) _r.textContent = window.__SIMAS_USER__.roleLabel || window.__SIMAS_USER__.role || '';
+        }
+      </script>
+    </div>
+
+    <!-- Navigation Menu Items -->
+    <nav class="px-3 mt-2 flex-1 overflow-y-auto">
+      <div class="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+        Menu Operasional
+      </div>
+      <div id="sidebar-menu-list" class="space-y-1">
+        <!-- Rendered dynamically by navigation.js -->
+      </div>
+    </nav>
+
+        <!-- Footer System Info -->
+    <div class="p-3 mt-auto space-y-1.5">
+      <!-- Tombol Logout Sidebar -->
+      <a href="login.html" title="Keluar / Logout" class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition group">
+        <i data-lucide="log-out" class="w-4 h-4 text-rose-500 group-hover:text-rose-700 transition"></i>
+        <span>Keluar dari Sistem</span>
+      </a>
+      <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-[#dbe8fb]">
+        <div class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+          <i data-lucide="badge-check" class="w-3.5 h-3.5 text-teal-600"></i>
+          <span>v2.4.0 (Enterprise)</span>
+        </div>
+        <a href="index.html" class="text-[11px] font-bold text-[#0f2a71] hover:underline">Dashboard</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN WRAPPER ================= -->
+  <div class="flex-1 flex flex-col min-w-0">
+    <header class="h-14 bg-white/95 backdrop-blur border-b border-slate-200/80 sticky top-0 z-30 px-6 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-4 flex-1 max-w-2xl min-w-0">
+        <button onclick="toggleSidebar()" class="md:hidden p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition shrink-0">
+          <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+
+        <nav class="flex items-center text-xs font-medium text-slate-500 shrink-0">
+          <a href="index.html" class="hover:text-slate-800 transition">SIMAS</a>
+          <span class="mx-1.5 text-slate-400 font-normal">&gt;</span>
+          <span class="text-slate-900 font-bold">Pengaturan Sistem</span>
+        </nav>
+      </div>
+
+      <div class="flex items-center gap-4 shrink-0">
+        <div id="btn-header-profile" class="flex items-center gap-2 select-none">
+          <img 
+            id="header-user-avatar"
+            src="../assets/avatar_bambang.jpg" 
+            onerror="this.src='https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=96&q=80'" 
+            alt="User Avatar" 
+            class="w-7 h-7 rounded-full object-cover ring-1 ring-slate-200"
+          >
+          <div class="text-left leading-tight hidden sm:block">
+            <div id="header-user-name" class="text-xs font-bold text-slate-900 truncate max-w-[150px]"></div>
+            <div id="header-user-role" class="text-[10px] font-medium text-slate-500 truncate"></div>
+          </div>
+        </div>
+        <script>
+          if (window.__SIMAS_USER__) {
+            var _un = document.getElementById('header-user-name');
+            var _ur = document.getElementById('header-user-role');
+            var _ua = document.getElementById('header-user-avatar');
+            if (_un) _un.textContent = window.__SIMAS_USER__.nama || window.__SIMAS_USER__.username || '';
+            if (_ur) _ur.textContent = window.__SIMAS_USER__.roleLabel || window.__SIMAS_USER__.role || '';
+            if (_ua && window.__SIMAS_USER__.avatar) _ua.src = window.__SIMAS_USER__.avatar;
+          }
+        </script>
+        <a href="login.html" title="Keluar / Logout" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition flex items-center gap-1">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </a>
+      </div>
+    </header>
+
+    <main class="p-6 space-y-6 flex-1 max-w-4xl w-full mx-auto">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="px-2.5 py-0.5 rounded-full bg-blue-100 text-[#0f2a71] text-[10px] font-extrabold uppercase tracking-wider">
+              Khusus Administrator
+            </span>
+            <span class="text-xs text-slate-400 font-semibold">• Konfigurasi Global</span>
+          </div>
+          <h1 class="text-2xl font-black text-slate-900 tracking-tight">Pengaturan &amp; Kebijakan Sistem</h1>
+          <p class="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+            Atur parameter operasional, kebijakan durasi peminjaman, serta manajemen data simpanan (localStorage).
+          </p>
+        </div>
+      </div>
+
+      <!-- Appearance / Dark Mode Card -->
+      <div class="bg-white rounded-2xl border border-slate-200/90 card-shadow p-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div class="flex items-center gap-3.5">
+            <div class="w-10 h-10 rounded-xl bg-blue-50 text-[#0f2a71] flex items-center justify-center shrink-0">
+              <i data-lucide="moon" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h2 class="text-sm font-extrabold text-slate-900">Tampilan Antarmuka (Mode Gelap / Dark Mode)</h2>
+              <p class="text-xs text-slate-500 mt-0.5">Aktifkan mode gelap untuk kenyamanan visual seluruh halaman SIMAS. Tersimpan otomatis di browser Anda.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            id="settings-darkmode-toggle"
+            role="switch"
+            aria-checked="false"
+            aria-label="Aktifkan Mode Gelap"
+            data-simas-theme-switch="1"
+            onclick="toggleSimasDarkMode()"
+            class="flex items-center gap-2.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition cursor-pointer shrink-0"
+          >
+            <span data-switch-label class="text-xs font-bold text-slate-700">Mode Terang</span>
+            <span data-switch-track class="inline-block w-11 h-6 rounded-full bg-slate-300 relative transition-colors shrink-0">
+              <span data-switch-knob class="block w-5 h-5 rounded-full bg-white shadow-sm absolute top-0.5 left-0.5 translate-x-0 transition-transform"></span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Settings Cards -->
+      <form id="form-settings" onsubmit="handleSaveSettings(event)" class="bg-white rounded-2xl border border-slate-200/90 card-shadow p-6 space-y-6">
+        <div>
+          <h2 class="text-sm font-extrabold text-slate-900 pb-2 border-b border-slate-100">Profil &amp; Identitas Institusi</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Nama Perguruan Tinggi / Institusi</label>
+              <input type="text" id="setting-institusi" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none font-semibold focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Email Layanan Sarpras</label>
+              <input type="email" id="setting-email" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none font-semibold focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20">
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="text-sm font-extrabold text-slate-900 pb-2 border-b border-slate-100">Kebijakan Peminjaman Sarana</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Maksimal Durasi Peminjaman (Hari)</label>
+              <input type="number" id="setting-durasi" min="1" max="30" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none font-bold focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Persetujuan Bertingkat (Approval Pimpinan)</label>
+              <select id="setting-approval" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none font-semibold focus:border-blue-600">
+                <option value="1">Aktif untuk Ruangan Utama &amp; Nilai &gt; Rp 10 Juta</option>
+                <option value="0">Otomatis Otorisasi Petugas Sarpras</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-2 flex justify-end">
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#0f2a71] hover:bg-[#0a1e54] text-white text-xs font-bold shadow-sm transition flex items-center gap-2">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            <span>Simpan Perubahan Pengaturan</span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Database Management & Backup -->
+      <div class="bg-white rounded-2xl border border-slate-200/90 card-shadow p-6 space-y-6">
+        <div>
+          <h2 class="text-sm font-extrabold text-slate-900 pb-2 border-b border-slate-100">Manajemen Database Backend (SQLite &amp; Persistence)</h2>
+          <div class="space-y-3 mt-4 text-xs">
+            <p class="text-slate-600 leading-relaxed">
+              Sistem SIMAS didukung oleh database relasional SQLite terintegrasi (<code class="bg-slate-100 px-1 py-0.5 rounded text-blue-800">data/simas.db</code>) yang menyimpan seluruh data aset master, akun pengguna, antrean peminjaman, perbaikan tiket, dan riwayat mutasi.
+            </p>
+            <div class="flex flex-wrap gap-2.5 pt-2">
+              <a href="/api/backup" download class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold transition flex items-center gap-1.5 shadow-xs">
+                <i data-lucide="download" class="w-4 h-4 text-blue-700"></i>
+                <span>Download Backup Database (JSON)</span>
+              </a>
+              <button onclick="handleResetAllData()" class="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold transition flex items-center gap-1.5 shadow-xs">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                <span>Bersihkan &amp; Reset Database Pabrik</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audit Activity Logs -->
+        <div class="pt-4 border-t border-slate-100">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Aktivitas &amp; Audit Log Terbaru (Backend)</h3>
+          <div id="activity-log-container" class="space-y-2 text-xs">
+            <div class="text-slate-400 py-3">Memuat riwayat log aktivitas...</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- RBAC & Navigation Scripts -->
+  <script src="../js/auth.js"></script>
+  <script src="../js/rbac.js"></script>
+  <script src="../js/navigation.js"></script>
+  <script src="../js/api.js"></script>
+
+  <script>
+    async function loadSettings() {
+      const res = await API.getSettings();
+      if (res && res.success && res.data) {
+        document.getElementById('setting-institusi').value = res.data.nama_institusi || 'Universitas Teknologi & Sains Nusantara';
+        document.getElementById('setting-email').value = res.data.email_notifikasi || 'sarpras@institusi.ac.id';
+        document.getElementById('setting-durasi').value = res.data.durasi_peminjaman_hari || 7;
+        document.getElementById('setting-approval').value = res.data.approval_bertingkat || '1';
+      }
+
+      loadActivityLogs();
+    }
+
+    async function loadActivityLogs() {
+      const logContainer = document.getElementById('activity-log-container');
+      if (!logContainer) return;
+
+      const res = await API.getActivityLogs();
+      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+        logContainer.innerHTML = res.data.map(l => `
+          <div class="flex items-start justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+            <div>
+              <div class="font-bold text-slate-800">${l.action} <span class="text-slate-400 font-normal">oleh</span> <span class="text-blue-700 font-semibold">${l.user_name}</span></div>
+              <div class="text-[11px] text-slate-500 mt-0.5">${l.details || '-'}</div>
+            </div>
+            <div class="text-[10px] font-mono text-slate-400 whitespace-nowrap ml-2">${l.timestamp || ''}</div>
+          </div>
+        `).join('');
+      } else {
+        logContainer.innerHTML = '<div class="text-slate-400 py-2">Belum ada riwayat aktivitas.</div>';
+      }
+    }
+
+    async function handleSaveSettings(e) {
+      e.preventDefault();
+      if (!requirePermission('settings:manage', 'Mengubah Pengaturan')) return;
+
+      const data = {
+        nama_institusi: document.getElementById('setting-institusi').value,
+        email_notifikasi: document.getElementById('setting-email').value,
+        durasi_peminjaman_hari: document.getElementById('setting-durasi').value,
+        approval_bertingkat: document.getElementById('setting-approval').value
+      };
+
+      const res = await API.saveSettings(data);
+      if (res && res.success) {
+        showToast('Pengaturan sistem berhasil disimpan!', 'success');
+        loadActivityLogs();
+      } else {
+        showToast(res.message || 'Gagal menyimpan pengaturan.', 'error');
+      }
+    }
+
+    async function handleResetAllData() {
+      if (!requirePermission('settings:manage', 'Reset Database')) return;
+      if (!confirm('PERINGATAN: Seluruh data inventaris, mutasi, akun baru, dan log akan dikembalikan ke setelan awal pabrik. Lanjutkan?')) return;
+
+      const res = await API.resetAll();
+      localStorage.clear();
+      showToast('Database berhasil direset ke kondisi awal.', 'success');
+      setTimeout(() => {
+        window.location.href = 'login.html';
+      }, 1500);
+    }
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const t = document.createElement('div');
+      const bg = type === 'success' ? 'bg-emerald-800' : type === 'error' ? 'bg-rose-800' : 'bg-slate-900';
+      t.className = `${bg} text-white px-4 py-3 rounded-xl shadow-xl text-xs font-semibold flex items-center gap-2 transform transition-all`;
+      t.textContent = msg;
+      container.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+    });
+  </script>
+</body>
+</html>
+

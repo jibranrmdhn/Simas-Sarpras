@@ -1,0 +1,17 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Artefak sementara AI Studio / editor
+.aistudio/
+
+# Database lokal (dibuat otomatis oleh backend saat dijalankan)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.backup-*.db

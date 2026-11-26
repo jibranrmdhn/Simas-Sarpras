@@ -1,0 +1,392 @@
+/* =========================================================
+   SIMAS – Sistem Informasi Sarana & Prasarana
+   Login Page Styling (Material Design 3 Theme)
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@500;700&display=swap');
+
+:root {
+  /* SIMAS Brand Palette */
+  --primary-navy: #0f2a71;
+  --primary-navy-dark: #091a48;
+  --primary-navy-light: #16428c;
+  --primary-blue: #1d4ed8;
+  --primary-blue-hover: #1e40af;
+  --canvas-bg: #f4f7fb;
+  --card-bg: #ffffff;
+  --soft-blue: #edf4fe;
+  --soft-blue-border: #dbe8fb;
+  --border-subtle: #e2e8f0;
+  --border-focus: #1d4ed8;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+
+  /* Material Design 3 Elevation Shadows */
+  --elevation-1: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.03);
+  --elevation-2: 0 4px 12px -2px rgba(15, 42, 113, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  --elevation-3: 0 12px 28px -4px rgba(15, 42, 113, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+  --elevation-hover: 0 8px 24px -2px rgba(15, 42, 113, 0.16), 0 3px 8px -2px rgba(15, 42, 113, 0.08);
+}
+
+/* Base resets & typography */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--canvas-bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Material Elevation Classes */
+.md-elevation-1 {
+  box-shadow: var(--elevation-1);
+}
+
+.md-elevation-2 {
+  box-shadow: var(--elevation-2);
+}
+
+.md-elevation-3 {
+  box-shadow: var(--elevation-3);
+}
+
+/* Left Hero Decorative Background */
+.hero-gradient {
+  background: linear-gradient(145deg, #07153a 0%, #0f2a71 52%, #184db8 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-pattern {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(circle at 20% 20%, rgba(29, 78, 216, 0.28) 0%, transparent 45%),
+    radial-gradient(circle at 80% 80%, rgba(14, 165, 233, 0.22) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.04) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  pointer-events: none;
+}
+
+/* Floating Glass Metric Card */
+.glass-metric {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+
+.glass-metric:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Material Outlined Input Container */
+.md-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.md-field-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.md-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--border-subtle);
+  border-radius: 12px;
+  background-color: #ffffff;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.md-input-wrapper:hover {
+  border-color: #cbd5e1;
+}
+
+.md-input-wrapper:focus-within {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3.5px rgba(29, 78, 216, 0.12);
+}
+
+.md-input-icon-lead {
+  position: absolute;
+  left: 14px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: color 0.2s ease;
+}
+
+.md-input-wrapper:focus-within .md-input-icon-lead {
+  color: var(--primary-blue);
+}
+
+.md-input {
+  width: 100%;
+  height: 46px;
+  border: none;
+  background: transparent;
+  padding: 0 44px 0 42px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: #0f172a;
+  outline: none;
+}
+
+.md-input::placeholder {
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.md-input-action {
+  position: absolute;
+  right: 12px;
+  color: #94a3b8;
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.md-input-action:hover {
+  color: #334155;
+  background: #f1f5f9;
+}
+
+/* Material Role Segmented Selector (4 Roles RBAC) */
+.role-segment-group {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  background: #eef4fc;
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid #dbe8fb;
+}
+
+@media (max-width: 640px) {
+  .role-segment-group {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.role-radio-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.role-radio-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: center;
+  user-select: none;
+  gap: 3px;
+}
+
+.role-radio-label:hover {
+  color: var(--primary-navy);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.role-radio-input:checked + .role-radio-label {
+  background: #ffffff;
+  color: var(--primary-navy);
+  font-weight: 800;
+  box-shadow: 0 2px 5px rgba(15, 42, 113, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+/* Material Custom Checkbox */
+.md-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #475569;
+  user-select: none;
+  font-weight: 500;
+}
+
+.md-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+  background-color: #ffffff;
+  display: grid;
+  place-content: center;
+  transition: all 0.15s ease;
+  margin: 0;
+}
+
+.md-checkbox:hover {
+  border-color: var(--primary-blue);
+}
+
+.md-checkbox:checked {
+  background-color: var(--primary-navy);
+  border-color: var(--primary-navy);
+}
+
+.md-checkbox:checked::before {
+  content: "";
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+
+/* Material Elevated Button */
+.md-btn-submit {
+  width: 100%;
+  height: 48px;
+  background: linear-gradient(180deg, #1342b8 0%, #0f2a71 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px -1px rgba(15, 42, 113, 0.35);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+}
+
+.md-btn-submit:hover {
+  background: linear-gradient(180deg, #184ec9 0%, #0c2368 100%);
+  box-shadow: 0 6px 18px 0 rgba(15, 42, 113, 0.42);
+  transform: translateY(-1px);
+}
+
+.md-btn-submit:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 8px 0 rgba(15, 42, 113, 0.25);
+}
+
+/* Outlined SSO Button */
+.md-btn-sso {
+  width: 100%;
+  height: 44px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.md-btn-sso:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: var(--primary-navy);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+
+/* Divider with centered text */
+.md-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.md-divider::before,
+.md-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.md-divider:not(:empty)::before {
+  margin-right: 12px;
+}
+
+.md-divider:not(:empty)::after {
+  margin-left: 12px;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

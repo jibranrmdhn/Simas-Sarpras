@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <!-- Early User Session Sync (Mencegah Flash Role saat Load) -->
+  <script>
+    try {
+      window.__SIMAS_USER__ = JSON.parse(localStorage.getItem('simas_current_user') || 'null');
+    } catch (e) {
+      window.__SIMAS_USER__ = null;
+    }
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIMAS - Manajemen Gedung, Fasilitas & Ruangan</title>
+  <meta name="description" content="Pemetaan hierarki prasarana fisik institusi, kapasitas okupansi, fasilitas terpasang, dan ketersediaan ruangan real-time.">
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            navy: {
+              DEFAULT: '#102f86',
+              dark: '#0c2368',
+              light: '#1e44b8'
+            },
+            canvas: '#f3f6fb',
+            softblue: '#edf4fe',
+          }
+        }
+      }
+    };
+  </script>
+
+  <link rel="stylesheet" href="../css/gedung.css">
+</head>
+<body class="bg-[#f3f6fb] text-slate-800 antialiased min-h-screen">
+
+<div class="flex min-h-screen w-full relative">
+
+  <!-- ================= 1. SIDEBAR NAVIGASI ================= -->
+  <!-- Mobile Sidebar Backdrop Overlay -->
+  <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 hidden md:hidden"></div>
+
+  <!-- ================= LEFT SIDEBAR ================= -->
+  <aside id="main-sidebar" class="w-60 shrink-0 bg-[#f0f5fc] border-r border-slate-200/80 flex flex-col fixed md:sticky top-0 h-screen z-40 -translate-x-full md:translate-x-0 transition-transform duration-300">
+    <!-- Brand / Logo Area -->
+    <div class="px-5 pt-5 pb-3">
+      <div class="flex items-center justify-between">
+        <a href="index.html" class="flex items-center gap-3">
+          <!-- Brand Cube Icon -->
+          <div class="w-9 h-9 rounded-xl bg-[#1342b8] flex items-center justify-center text-white shadow-sm shadow-blue-700/25">
+            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-[15px] font-extrabold tracking-tight text-[#0f2a71] leading-none">SIMAS</h1>
+            <p class="text-[10px] text-slate-500 font-medium mt-1">Sistem Sarana &amp; Prasarana</p>
+          </div>
+        </a>
+        <button onclick="toggleSidebar()" class="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Active Role Info Badge (Static Indicator) -->
+      <div id="role-badge" class="mt-3.5 w-full px-3 py-2.5 bg-[#dbe8fb] rounded-xl flex items-center justify-between text-left select-none">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <i data-lucide="shield-check" class="w-4 h-4 text-[#0f2a71] shrink-0"></i>
+          <div class="leading-tight truncate">
+            <span class="text-[10px] text-slate-600 font-semibold block">Peran Aktif</span>
+            <span id="sidebar-role-label" class="text-xs font-bold text-[#0f2a71] truncate block"></span>
+          </div>
+        </div>
+      </div>
+      <script>
+        if (window.__SIMAS_USER__) {
+          var _r = document.getElementById('sidebar-role-label');
+          if (_r) _r.textContent = window.__SIMAS_USER__.roleLabel || window.__SIMAS_USER__.role || '';
+        }
+      </script>
+    </div>
+
+    <!-- Navigation Menu Items -->
+    <nav class="px-3 mt-2 flex-1 overflow-y-auto">
+      <div class="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+        Menu Operasional
+      </div>
+      <div id="sidebar-menu-list" class="space-y-1">
+        <!-- Rendered dynamically by gedung.js -->
+      </div>
+    </nav>
+
+        <!-- Footer System Info -->
+    <div class="p-3 mt-auto space-y-1.5">
+      <!-- Tombol Logout Sidebar -->
+      <a href="login.html" title="Keluar / Logout" class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition group">
+        <i data-lucide="log-out" class="w-4 h-4 text-rose-500 group-hover:text-rose-700 transition"></i>
+        <span>Keluar dari Sistem</span>
+      </a>
+      <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-[#dbe8fb]">
+        <div class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+          <i data-lucide="badge-check" class="w-3.5 h-3.5 text-teal-600"></i>
+          <span>v2.4.0 (Enterprise)</span>
+        </div>
+        <a href="#" class="text-[11px] font-bold text-[#0f2a71] hover:underline">Bantuan</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= 2. MAIN CONTENT ================= -->
+  <div class="flex-1 min-w-0 flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <header class="h-14 bg-white/95 backdrop-blur border-b border-slate-200/80 sticky top-0 z-30 px-6 flex items-center justify-between gap-4">
+      <!-- Breadcrumb & Search Bar -->
+      <div class="flex items-center gap-6 flex-1 max-w-2xl min-w-0">
+        <nav class="flex items-center text-xs font-medium text-slate-500 shrink-0">
+          <a href="index.html" class="hover:text-slate-800 transition">SIMAS</a>
+          <span class="mx-1.5 text-slate-400 font-normal">&gt;</span>
+          <span class="text-slate-900 font-bold">Workspace</span>
+        </nav>
+
+        <!-- Global Search Input -->
+        <label class="relative flex-1 max-w-md">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+          <input id="global-search-input" type="text" placeholder="Cari aset, tiket, ruangan, kode QR... (Ctrl + K)"
+                 class="w-full h-8 rounded-lg bg-[#edf3fb] border border-transparent pl-9 pr-3 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:bg-white focus:border-blue-400 transition">
+        </label>
+      </div>
+
+      <!-- Right Actions & Profile -->
+      <div class="flex items-center gap-4 shrink-0">
+        <!-- Notification Bell -->
+        <button id="btn-header-notif" class="relative text-slate-700 hover:text-slate-900 p-1.5 transition">
+          <i data-lucide="bell" class="w-[18px] h-[18px]"></i>
+          <span class="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-rose-600 ring-2 ring-white"></span>
+        </button>
+
+        <!-- User Profile Dropdown -->
+        <div id="btn-header-profile" class="flex items-center gap-2 select-none">
+          <img 
+            id="header-user-avatar"
+            src="../assets/avatar_bambang.jpg" 
+            onerror="this.src='https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=96&q=80'" 
+            alt="User Avatar" 
+            class="w-7 h-7 rounded-full object-cover ring-1 ring-slate-200"
+          >
+          <div class="text-left leading-tight hidden sm:block">
+            <div id="header-user-name" class="text-xs font-bold text-slate-900 truncate max-w-[150px]"></div>
+            <div id="header-user-role" class="text-[10px] font-medium text-slate-500 truncate"></div>
+          </div>
+        </div>
+        <script>
+          if (window.__SIMAS_USER__) {
+            var _un = document.getElementById('header-user-name');
+            var _ur = document.getElementById('header-user-role');
+            var _ua = document.getElementById('header-user-avatar');
+            if (_un) _un.textContent = window.__SIMAS_USER__.nama || window.__SIMAS_USER__.username || '';
+            if (_ur) _ur.textContent = window.__SIMAS_USER__.roleLabel || window.__SIMAS_USER__.role || '';
+            if (_ua && window.__SIMAS_USER__.avatar) _ua.src = window.__SIMAS_USER__.avatar;
+          }
+        </script>
+        <!-- Tombol Logout ke Halaman Login -->
+        <a href="login.html" title="Keluar / Logout" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition flex items-center gap-1">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="p-6 space-y-6 pb-16 flex-1">
+
+      <!-- ===== PAGE HEADER ===== -->
+      <section class="flex flex-col xl:flex-row xl:items-start justify-between gap-4">
+        <div>
+          <!-- Secondary Breadcrumb -->
+          <div class="text-xs text-slate-500 flex items-center gap-1.5 mb-1 font-medium">
+            <span>SIMAS</span>
+            <span class="text-slate-300">&gt;</span>
+            <span>Prasarana &amp; Fasilitas</span>
+            <span class="text-slate-300">&gt;</span>
+            <span class="text-blue-900 font-bold">Gedung &amp; Ruangan</span>
+          </div>
+          <h1 class="text-2xl font-black text-slate-900 tracking-tight">Manajemen Gedung, Fasilitas &amp; Ruangan</h1>
+          <p class="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+            Pemetaan hierarki prasarana fisik institusi, kapasitas okupansi, fasilitas terpasang, dan ketersediaan ruangan real-time.
+          </p>
+        </div>
+
+        <!-- Action Buttons Right -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 shrink-0">
+          <button onclick="openModalTambahRuangan()" class="h-9 px-4 rounded-xl bg-[#102f86] hover:bg-[#0c2368] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>+ Tambah Ruangan Baru</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ===== 4 STAT CARDS ROW ===== -->
+      <section id="stat-cards-container" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <!-- Rendered dynamically by gedung.js -->
+      </section>
+
+      <!-- ===== SPLIT SECTION: TREE & MAIN ROOMS ===== -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- ================= LEFT: STRUKTUR GEDUNG (NAVIGATOR TREE) ================= -->
+        <div class="lg:col-span-4 xl:col-span-3 space-y-4">
+          <div class="bg-white rounded-2xl p-4 soft-shadow border border-slate-200/90 space-y-3">
+            
+            <!-- Header Tree -->
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div class="flex items-center gap-2">
+                <i data-lucide="network" class="w-4 h-4 text-blue-700"></i>
+                <h3 class="text-xs font-extrabold text-slate-900">Struktur Gedung</h3>
+              </div>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+                4 Kompleks
+              </span>
+            </div>
+
+            <!-- Search in Tree -->
+            <div class="relative">
+              <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+              <input id="building-tree-search" type="text" placeholder="Cari gedung, lantai, atau ruangan..."
+                     class="w-full h-8 pl-8 pr-3 rounded-xl bg-[#edf4fe] border border-blue-100/70 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition">
+            </div>
+
+            <!-- Tree Hierarchy List -->
+            <div id="building-tree-list" class="space-y-1 pt-1">
+              <!-- Rendered dynamically by gedung.js -->
+            </div>
+
+            <!-- Kondisi Utilitas Gedung Box -->
+            <div class="bg-[#edf4fe] border border-blue-100/80 rounded-xl p-3 mt-4 space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-slate-800">Kondisi Utilitas Gedung</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">Normal</span>
+              </div>
+              <p class="text-[10px] text-slate-500 leading-relaxed">
+                Genset aktif, water supply 100%, lift utama beroperasi reguler.
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ================= RIGHT: ROOM CARDS & EMBEDDED ASSETS ================= -->
+        <div class="lg:col-span-8 xl:col-span-9 space-y-5">
+
+          <!-- Right Content Header -->
+          <div class="bg-white rounded-2xl p-4 soft-shadow border border-slate-200/90 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <i data-lucide="building-2" class="w-4 h-4 text-blue-700"></i>
+                <h2 id="selected-building-header" class="text-sm font-extrabold text-slate-900">Gedung Rektorat — Semua Lantai</h2>
+              </div>
+              <p id="selected-building-subheader" class="text-xs text-slate-500 mt-0.5">
+                Zona Administrasi Utama, Ruang Paripurna Senat, dan Multimedia Command Studio
+              </p>
+            </div>
+
+            <div id="selected-floor-capacity" class="px-3 py-1 rounded-full border border-blue-200 bg-blue-50 text-blue-700 text-xs font-bold whitespace-nowrap self-start md:self-auto">
+              Kapasitas Total Lantai: 135 Orang
+            </div>
+          </div>
+
+          <!-- Floor Filter Tabs & Status Selector -->
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <!-- Floor Tabs -->
+            <div id="floor-tabs-container" class="flex items-center gap-1 text-xs">
+              <button data-floor="all" onclick="filterByFloor('all')" class="px-3 py-1.5 rounded-lg bg-white shadow-sm border border-slate-200 font-bold text-blue-900 transition cursor-pointer">
+                Semua Lantai
+              </button>
+              <button data-floor="Lantai 1" onclick="filterByFloor('Lantai 1')" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 font-semibold transition cursor-pointer">
+                Lantai 1
+              </button>
+              <button data-floor="Lantai 2" onclick="filterByFloor('Lantai 2')" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 font-semibold transition cursor-pointer">
+                Lantai 2
+              </button>
+              <button data-floor="Lantai 3" onclick="filterByFloor('Lantai 3')" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 font-semibold transition cursor-pointer">
+                Lantai 3
+              </button>
+            </div>
+
+            <!-- Status Dropdown -->
+            <div class="flex items-center gap-2">
+              <div class="relative">
+                <select id="status-filter-select" class="appearance-none h-9 pl-3.5 pr-8 rounded-xl bg-white border border-slate-200 text-xs text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer">
+                  <option value="all">Filter Status: Semua Ruangan</option>
+                  <option value="tersedia">Status: Tersedia (Bisa Dipinjam)</option>
+                  <option value="digunakan">Status: Sedang Digunakan</option>
+                  <option value="perawatan">Status: Dalam Perawatan</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Room Cards 2x2 Grid -->
+          <div id="room-cards-grid" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <!-- Rendered dynamically by gedung.js -->
+          </div>
+
+          <!-- Embedded Assets Table Section -->
+          <div id="embedded-assets-section" class="bg-white rounded-2xl soft-shadow border border-slate-200/90 overflow-hidden">
+            <!-- Table Header Bar -->
+            <div class="p-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div class="flex items-start gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
+                  <i data-lucide="archive" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <h3 id="selected-room-assets-title" class="text-xs font-bold text-slate-900 leading-tight">
+                    Daftar Aset Tertanam di Ruang Terpilih: Ruang Rapat Paripurna (RNG-02-01)
+                  </h3>
+                  <p id="selected-room-assets-subtitle" class="text-[11px] text-slate-500 mt-0.5">
+                    Aset Terdaftar &amp; Terkalibrasi Aktif di Ruangan Ini
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="scanSelectedRoomQr()" class="h-8 px-3 rounded-xl border border-blue-200 bg-white hover:bg-blue-50 text-blue-900 text-xs font-bold transition cursor-pointer">
+                  Pindai QR Ruangan
+                </button>
+                <button type="button" onclick="openModalTambahAsetRuang()" class="h-8 px-3 rounded-xl bg-[#102f86] hover:bg-blue-900 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition cursor-pointer">
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                  <span>+ Tambah Aset Ruangan</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Table Content -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead class="bg-[#eef3fb] border-b border-slate-200 text-[10px] font-extrabold uppercase text-slate-600 tracking-wider">
+                  <tr>
+                    <th class="py-3 px-4">Kode Aset</th>
+                    <th class="py-3 px-4">Nama Barang / Spesifikasi</th>
+                    <th class="py-3 px-4">Kategori</th>
+                    <th class="py-3 px-4">Tahun Perolehan</th>
+                    <th class="py-3 px-4">Kondisi</th>
+                    <th class="py-3 px-4 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="embedded-assets-tbody" class="divide-y divide-slate-100">
+                  <!-- Rendered dynamically by gedung.js -->
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+</div>
+
+<!-- Modal Tambah Ruangan / Fasilitas Baru -->
+<div id="modal-tambah-ruangan" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+    <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+          <i data-lucide="building" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <h3 class="text-xs font-bold text-slate-900">Tambah Ruangan / Fasilitas Gedung</h3>
+          <p class="text-[10px] text-slate-500">Daftarkan ruang kelas, aula, atau laboratorium baru</p>
+        </div>
+      </div>
+      <button onclick="closeModalTambahRuangan()" class="text-slate-400 hover:text-slate-700 p-1 rounded-lg">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <form id="form-ruangan" onsubmit="handleRuanganSubmit(event)" class="p-4 space-y-3">
+      <div class="grid grid-cols-2 gap-2.5">
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Kode Ruangan *</label>
+          <input type="text" id="ruang-kode" required placeholder="cth: R-REK-05" class="w-full text-xs font-mono border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Lantai</label>
+          <input type="text" id="ruang-lantai" placeholder="Lantai 2" value="Lantai 2" class="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Nama Ruangan / Fasilitas *</label>
+        <input type="text" id="ruang-nama" required placeholder="cth: Ruang Sidang Dekanat Sayap Barat" class="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Gedung Institusi *</label>
+        <select id="ruang-gedung" class="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none font-semibold">
+          <option value="GD-REK">Gedung Rektorat (Pusat)</option>
+          <option value="GD-FT">Gedung Fakultas Teknik</option>
+          <option value="GD-LAB">Gedung Laboratorium Terpadu</option>
+          <option value="GD-PASCA">Gedung Pascasarjana &amp; Riset</option>
+        </select>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2.5">
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Kapasitas Orang</label>
+          <input type="text" id="ruang-kapasitas" placeholder="30 Orang" value="30 Orang" class="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Luas Ruangan</label>
+          <input type="text" id="ruang-luas" placeholder="80 m²" value="80 m²" class="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none">
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2.5 border-t border-slate-100">
+        <button type="button" onclick="closeModalTambahRuangan()" class="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+          Batal
+        </button>
+        <button type="submit" class="px-3.5 py-1.5 rounded-xl bg-[#0f2a71] hover:bg-[#0a1e54] text-white text-xs font-bold shadow-sm transition">
+          Simpan Ruangan
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- RBAC & Navigation Scripts -->
+<script src="../js/auth.js"></script>
+<script src="../js/rbac.js"></script>
+<script src="../js/navigation.js"></script>
+<script src="../js/api.js"></script>
+<!-- Scripts -->
+<script src="../js/gedung.js"></script>
+</body>
+</html>

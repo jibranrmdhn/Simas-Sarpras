@@ -1,0 +1,7 @@
+{
+  "php.executablePath": "C:\\xampp\\php\\php.exe",
+  "fiveserver.php": "C:\\xampp\\php\\php.exe",
+  "fiveserver.open": "pages/login.html",
+  "liveServer.settings.defaultFile": "pages/login.html",
+  "liveServer.settings.root": "/"
+}

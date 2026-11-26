@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <!-- Early User Session Sync (Mencegah Flash Role saat Load) -->
+  <script>
+    try {
+      window.__SIMAS_USER__ = JSON.parse(localStorage.getItem('simas_current_user') || 'null');
+    } catch (e) {
+      window.__SIMAS_USER__ = null;
+    }
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIMAS - Peminjaman & Reservasi Sarana</title>
+  <meta name="description" content="Kelola permohonan peminjaman aset multimedia, peralatan uji, dan pemesanan ruangan rapat atau aula utama secara terpusat.">
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            navy: {
+              DEFAULT: '#0f2a71',
+              dark: '#091a48',
+              light: '#16428c',
+              subtle: '#123b87',
+            },
+            canvas: '#f4f7fb',
+            softblue: '#edf4fe',
+          }
+        }
+      }
+    };
+  </script>
+
+  <link rel="stylesheet" href="../css/peminjaman.css">
+</head>
+<body class="bg-[#f4f7fb] text-slate-800 antialiased min-h-screen">
+
+<div class="flex min-h-screen w-full relative">
+
+  <!-- ================= 1. SIDEBAR NAVIGASI ================= -->
+  <!-- Mobile Sidebar Backdrop Overlay -->
+  <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 hidden md:hidden"></div>
+
+  <!-- ================= LEFT SIDEBAR ================= -->
+  <aside id="main-sidebar" class="w-60 shrink-0 bg-[#f0f5fc] border-r border-slate-200/80 flex flex-col fixed md:sticky top-0 h-screen z-40 -translate-x-full md:translate-x-0 transition-transform duration-300">
+    <!-- Brand / Logo Area -->
+    <div class="px-5 pt-5 pb-3">
+      <div class="flex items-center justify-between">
+        <a href="index.html" class="flex items-center gap-3">
+          <!-- Brand Cube Icon -->
+          <div class="w-9 h-9 rounded-xl bg-[#1342b8] flex items-center justify-center text-white shadow-sm shadow-blue-700/25">
+            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-[15px] font-extrabold tracking-tight text-[#0f2a71] leading-none">SIMAS</h1>
+            <p class="text-[10px] text-slate-500 font-medium mt-1">Sistem Sarana &amp; Prasarana</p>
+          </div>
+        </a>
+        <button onclick="toggleSidebar()" class="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Active Role Info Badge (Static Indicator) -->
+      <div id="role-badge" class="mt-3.5 w-full px-3 py-2.5 bg-[#dbe8fb] rounded-xl flex items-center justify-between text-left select-none">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <i data-lucide="shield-check" class="w-4 h-4 text-[#0f2a71] shrink-0"></i>
+          <div class="leading-tight truncate">
+            <span class="text-[10px] text-slate-600 font-semibold block">Peran Aktif</span>
+            <span id="sidebar-role-label" class="text-xs font-bold text-[#0f2a71] truncate block"></span>
+          </div>
+        </div>
+      </div>
+      <script>
+        if (window.__SIMAS_USER__) {
+          var _r = document.getElementById('sidebar-role-label');
+          if (_r) _r.textContent = window.__SIMAS_USER__.roleLabel || window.__SIMAS_USER__.role || '';
+        }
+      </script>
+    </div>
+
+    <!-- Navigation Menu Items -->
+    <nav class="px-3 mt-2 flex-1 overflow-y-auto">
+      <div class="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+        Menu Operasional
+      </div>
+      <div id="sidebar-menu-list" class="space-y-1">
+        <!-- Rendered dynamically by peminjaman.js -->
+      </div>
+    </nav>
+
+        <!-- Footer System Info -->
+    <div class="p-3 mt-auto space-y-1.5">
+      <!-- Tombol Logout Sidebar -->
+      <a href="login.html" title="Keluar / Logout" class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition group">
+        <i data-lucide="log-out" class="w-4 h-4 text-rose-500 group-hover:text-rose-700 transition"></i>
+        <span>Keluar dari Sistem</span>
+      </a>
+      <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-[#dbe8fb]">
+        <div class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+          <i data-lucide="badge-check" class="w-3.5 h-3.5 text-teal-600"></i>
+          <span>v2.4.0 (Enterprise)</span>
+        </div>
+        <a href="#" class="text-[11px] font-bold text-[#0f2a71] hover:underline">Bantuan</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= 2. MAIN CONTENT ================= -->
+  <div class="flex-1 min-w-0 flex flex-col">
+
+    <!-- Top Header Bar -->
+    <header class="h-14 bg-white/95 backdrop-blur border-b border-slate-200/80 sticky top-0 z-30 px-6 flex items-center justify-between gap-4">
+      <!-- Breadcrumb & Search Bar -->
+      <div class="flex items-center gap-6 flex-1 max-w-2xl min-w-0">
+        <nav class="flex items-center text-xs font-medium text-slate-500 shrink-0">
+          <a href="index.html" class="hover:text-slate-800 transition">SIMAS</a>
+          <span class="mx-1.5 text-slate-400 font-normal">&gt;</span>
+          <span class="text-slate-900 font-bold">Workspace</span>
+        </nav>
+
+        <!-- Search Bar with Shortcut -->
+        <label class="relative flex-1 max-w-md">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+          <input 
+            type="text" 
+            placeholder="Cari aset, tiket, ruangan, kode QR... (Ctrl + K)" 
+            class="w-full h-8 rounded-lg bg-[#edf3fb] border border-transparent pl-9 pr-3 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:bg-white focus:border-blue-400 transition"
+          >
+        </label>
+      </div>
+
+      <!-- Action Buttons & User Profile -->
+      <div class="flex items-center gap-4 shrink-0">
+        <!-- Notification Bell with Red Indicator -->
+        <button id="btn-header-notif" class="relative text-slate-700 hover:text-slate-900 p-1.5 transition">
+          <i data-lucide="bell" class="w-[18px] h-[18px]"></i>
+          <span class="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-rose-600 ring-2 ring-white"></span>
+        </button>
+
+        <!-- User Profile Dropdown -->
+        <div id="btn-header-profile" class="flex items-center gap-2 select-none">
+          <img 
+            id="header-user-avatar"
+            src="../assets/avatar_bambang.jpg" 
+            onerror="this.src='https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=96&q=80'" 
+            alt="User Avatar" 
+            class="w-7 h-7 rounded-full object-cover ring-1 ring-slate-200"
+          >
+          <div class="text-left leading-tight hidden sm:block">
+            <div id="header-user-name" class="text-xs font-bold text-slate-900 truncate max-w-[150px]"></div>
+            <div id="header-user-role" class="text-[10px] font-medium text-slate-500 truncate"></div>
+          </div>
+        </div>
+        <script>
+          if (window.__SIMAS_USER__) {
+            var _un = document.getElementById('header-user-name');
+            var _ur = document.getElementById('header-user-role');
+            var _ua = document.getElementById('header-user-avatar');
+            if (_un) _un.textContent = window.__SIMAS_USER__.nama || window.__SIMAS_USER__.username || '';
+            if (_ur) _ur.textContent = window.__SIMAS_USER__.roleLabel || window.__SIMAS_USER__.role || '';
+            if (_ua && window.__SIMAS_USER__.avatar) _ua.src = window.__SIMAS_USER__.avatar;
+          }
+        </script>
+        <!-- Tombol Logout ke Halaman Login -->
+        <a href="login.html" title="Keluar / Logout" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition flex items-center gap-1">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="p-5 space-y-4 flex-1">
+
+      <!-- ================= PAGE TITLE ROW ================= -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <!-- Breadcrumb Tag -->
+          <div class="text-[10px] font-extrabold text-slate-700 tracking-wider uppercase mb-0.5">
+            FASILITAS &amp; INVENTARIS <span class="text-slate-400 font-normal">→</span> <span class="text-[#0f2a71]">RESERVASI TERPADU</span>
+          </div>
+          <!-- Title with Realtime badge -->
+          <div class="flex items-center gap-2.5">
+            <h1 class="text-xl font-extrabold text-slate-900 tracking-tight leading-tight">
+              Peminjaman &amp; Reservasi Sarana
+            </h1>
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ccfbf1] text-[#0f766e]">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Sinkronisasi Realtime</span>
+            </span>
+          </div>
+          <!-- Subtitle -->
+          <p class="text-[11px] text-slate-500 mt-0.5 max-w-2xl leading-relaxed">
+            Kelola permohonan peminjaman aset multimedia, peralatan uji, dan pemesanan ruangan rapat atau aula utama secara terpusat.
+          </p>
+        </div>
+
+        <!-- Right Header Action Buttons -->
+        <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+          <!-- Ekspor Log Button -->
+          <button 
+            onclick="exportLoansCSV()" 
+            class="h-9 px-3.5 rounded-xl bg-[#e0eefc] hover:bg-[#d0e5fb] text-[#16428c] border border-blue-200/80 text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap"
+          >
+            <i data-lucide="download" class="w-3.5 h-3.5 text-[#16428c] shrink-0"></i>
+            <span>Ekspor Log</span>
+          </button>
+
+          <!-- + Ajukan Peminjaman Aset/Ruangan Button -->
+          <button 
+            onclick="openModalAjukan()"
+            class="h-9 px-4 rounded-xl bg-[#0f2a71] hover:bg-[#0a1e54] text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition whitespace-nowrap"
+          >
+            <i data-lucide="plus-circle" class="w-4 h-4 text-white shrink-0"></i>
+            <span>+ Ajukan Peminjaman Aset/Ruangan</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= 4 KPI STATS CARDS ================= -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
+
+        <!-- Card 1: Sedang Dipinjam -->
+        <div class="bg-white rounded-xl border border-slate-200/80 p-3.5 card-shadow">
+          <div class="flex items-center justify-between">
+            <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+              <i data-lucide="calendar-check" class="w-4 h-4"></i>
+            </div>
+            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#e0f2fe] text-[#0284c7]">
+              Hari Ini
+            </span>
+          </div>
+          <div class="mt-2.5">
+            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">SEDANG DIPINJAM</div>
+            <div class="flex items-baseline mt-0.5">
+              <span id="kpi-loan-active" class="text-2xl font-extrabold text-slate-900 leading-none">24</span>
+              <span class="ml-2 text-[11px] font-bold text-emerald-600 flex items-center gap-0.5">
+                <i data-lucide="trending-up" class="w-3 h-3"></i> +3 unit
+              </span>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
+              14 Ruangan terpakai, 10 perangkat elektronik aktif di lapangan.
+            </p>
+          </div>
+        </div>
+
+        <!-- Card 2: Antrean Persetujuan -->
+        <div class="bg-white rounded-xl border border-slate-200/80 p-3.5 card-shadow">
+          <div class="flex items-center justify-between">
+            <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
+              <i data-lucide="clock" class="w-4 h-4"></i>
+            </div>
+            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#fee2e2] text-[#b91c1c]">
+              Perlu Tindakan
+            </span>
+          </div>
+          <div class="mt-2.5">
+            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">ANTREAN PERSETUJUAN</div>
+            <div class="flex items-baseline mt-0.5">
+              <span id="kpi-loan-pending" class="text-2xl font-extrabold text-slate-900 leading-none">8</span>
+              <span class="ml-2 text-[11px] font-bold text-rose-600">
+                Menunggu Verifikasi
+              </span>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
+              Menunggu konfirmasi verifikator sarpras dan kepala bagian.
+            </p>
+          </div>
+        </div>
+
+        <!-- Card 3: Terlambat Pengembalian -->
+        <div class="bg-white rounded-xl border border-slate-200/80 p-3.5 card-shadow">
+          <div class="flex items-center justify-between">
+            <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+              <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+            </div>
+            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#991b1b] text-white">
+              ! Overdue
+            </span>
+          </div>
+          <div class="mt-2.5">
+            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">TERLAMBAT PENGEMBALIAN</div>
+            <div class="flex items-baseline mt-0.5">
+              <span id="kpi-loan-overdue" class="text-2xl font-extrabold text-slate-900 leading-none">3</span>
+              <span class="ml-2 text-[11px] font-semibold text-slate-500">
+                dari Unit Kerja
+              </span>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
+              Notifikasi otomatis via WhatsApp &amp; Email telah dikirimkan.
+            </p>
+          </div>
+        </div>
+
+        <!-- Card 4: Tingkat Utilisasi -->
+        <div class="bg-white rounded-xl border border-slate-200/80 p-3.5 card-shadow flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <div class="w-7 h-7 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center">
+                <i data-lucide="pie-chart" class="w-3.5 h-3.5"></i>
+              </div>
+              <span class="text-[10px] font-semibold text-slate-500">
+                Tingkat Utilisasi
+              </span>
+            </div>
+
+            <!-- Value & Circular Gauge -->
+            <div class="flex items-center justify-between mt-1.5">
+              <div>
+                <div id="kpi-loan-util" class="text-2xl font-extrabold text-slate-900 leading-none">78.4%</div>
+                <div class="text-[10px] text-slate-500 font-medium mt-1">Kapasitas Gedung A &amp; B</div>
+              </div>
+
+              <!-- SVG Donut Chart -->
+              <div class="relative w-12 h-12 shrink-0 flex items-center justify-center">
+                <svg class="w-12 h-12 -rotate-90 transform" viewBox="0 0 56 56">
+                  <!-- Background Track -->
+                  <circle cx="28" cy="28" r="22" stroke="#e2e8f0" stroke-width="5" fill="none"/>
+                  <!-- 78.4% Filled Arc -->
+                  <circle 
+                    cx="28" cy="28" r="22" 
+                    stroke="#0f2a71" 
+                    stroke-width="5" 
+                    fill="none" 
+                    stroke-dasharray="138.23" 
+                    stroke-dashoffset="29.86" 
+                    stroke-linecap="round"
+                    class="donut-circle"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Banner -->
+          <div class="mt-2 bg-[#f0f6ff] border border-blue-100/80 rounded-lg px-2 py-1 flex items-center gap-1.5 text-[10px] text-slate-700 font-medium">
+            <i data-lucide="calendar" class="w-3 h-3 text-blue-600 shrink-0"></i>
+            <span>18 slot ruang kosong siap dibooking</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ================= TABS & VIEW CONTROLS ================= -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <!-- Tab Pills -->
+        <div class="flex items-center gap-1 overflow-x-auto pb-0.5">
+          <!-- Tab 1: Semua Peminjaman (Active) -->
+          <button id="tab-semua" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#163b84] text-white font-bold text-xs shadow-sm transition">
+            <i data-lucide="list-filter" class="w-3.5 h-3.5"></i>
+            <span>Semua Peminjaman</span>
+            <span id="badge-tab-semua" class="px-1.5 py-0.2 rounded bg-[#0e2759] text-white text-[10px] font-bold">142</span>
+          </button>
+
+          <!-- Tab 2: Antrean Persetujuan -->
+          <button id="tab-antrean" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-semibold text-xs transition">
+            <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-500"></i>
+            <span>Antrean Persetujuan</span>
+            <span id="badge-tab-antrean" class="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 text-[9px] font-bold">8</span>
+          </button>
+
+          <!-- Tab 3: Kalender Ketersediaan -->
+          <button id="tab-kalender" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-semibold text-xs transition">
+            <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-500"></i>
+            <span>Kalender Ketersediaan</span>
+          </button>
+
+          <!-- Tab 4: Pinjaman Saya -->
+          <button id="tab-saya" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-semibold text-xs transition">
+            <i data-lucide="folder-check" class="w-3.5 h-3.5 text-slate-500"></i>
+            <span>Pinjaman Saya</span>
+            <span id="badge-tab-saya" class="px-1.5 py-0.2 rounded-full bg-teal-100 text-teal-700 text-[9px] font-bold">2</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= FILTER CONTAINER CARD ================= -->
+      <div class="bg-[#edf3fc] border border-blue-200/60 rounded-xl p-3 space-y-2.5">
+        <!-- Filter Controls Row -->
+        <div class="flex flex-wrap items-center gap-2">
+
+          <!-- Rentang Jadwal Box -->
+          <div id="btn-box-rentang-jadwal" onclick="openModalRentangJadwal()" class="bg-white border border-slate-200/80 rounded-lg px-2.5 py-1 flex items-center justify-between gap-2.5 min-w-[240px] cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 transition">
+            <div class="flex items-center gap-2">
+              <i data-lucide="calendar" class="w-3.5 h-3.5 text-blue-600"></i>
+              <div>
+                <div class="text-[8px] font-bold text-slate-400 tracking-wider uppercase leading-none">RENTANG JADWAL</div>
+                <div id="label-rentang-jadwal" class="text-[11px] font-bold text-slate-800 mt-0.5">Semua Jadwal (Aktif)</div>
+              </div>
+            </div>
+            <button id="btn-ubah-jadwal-filter" type="button" onclick="handleBtnUbahJadwal(event)" class="text-[9px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/70 rounded px-1.5 py-0.5 transition">
+              Ubah
+            </button>
+          </div>
+
+          <!-- Kategori Sarpras Dropdown -->
+          <div class="bg-white border border-slate-200/80 rounded-lg px-2.5 py-1 flex-1 min-w-[180px]">
+            <label class="text-[8px] font-bold text-slate-400 tracking-wider uppercase block leading-none">Kategori Sarpras</label>
+            <select id="filter-category" class="w-full text-[11px] font-bold text-slate-800 bg-transparent outline-none cursor-pointer mt-0.5">
+              <option value="all">Semua Kategori (Elektronik &amp; Ruangan)</option>
+              <option value="elektronik">Peralatan Elektronik &amp; AV</option>
+              <option value="ruangan">Ruang Rapat &amp; Auditorium</option>
+            </select>
+          </div>
+
+          <!-- Status Sirkulasi Dropdown -->
+          <div class="bg-white border border-slate-200/80 rounded-lg px-2.5 py-1 flex-1 min-w-[170px]">
+            <label class="text-[8px] font-bold text-slate-400 tracking-wider uppercase block leading-none">Status Sirkulasi</label>
+            <select id="filter-status" class="w-full text-[11px] font-bold text-slate-800 bg-transparent outline-none cursor-pointer mt-0.5">
+              <option value="all">Semua Status Permohonan</option>
+              <option value="terlambat">Terlambat</option>
+              <option value="diajukan">Diajukan</option>
+              <option value="dipinjam">Sedang Dipinjam</option>
+              <option value="disetujui">Disetujui</option>
+              <option value="dikembalikan">Dikembalikan</option>
+            </select>
+          </div>
+
+          <!-- Reset Filter Button -->
+          <button id="btn-reset-filter" class="bg-white border border-slate-200/80 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 transition">
+            <i data-lucide="rotate-ccw" class="w-3 h-3 text-slate-500"></i>
+            <span>Reset Filter</span>
+          </button>
+
+        </div>
+
+        <!-- Filter Cepat Tags Row -->
+        <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
+          <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mr-1">FILTER CEPAT:</span>
+
+          <!-- Tag 1: Audit Internal BPKP -->
+          <button id="chip-bpkp" class="bg-white hover:bg-slate-50 border border-blue-200 text-blue-700 rounded-full px-2.5 py-0.5 text-[10px] font-semibold flex items-center gap-1 shadow-2xs transition">
+            <span>Audit Internal BPKP</span>
+            <span class="text-blue-400 hover:text-blue-800 text-xs leading-none">×</span>
+          </button>
+
+          <!-- Tag 2: Ruang Rapat Lt. 3 -->
+          <button id="chip-ruang-lt3" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-full px-2.5 py-0.5 text-[10px] font-semibold flex items-center gap-1.5 shadow-2xs transition">
+            <i data-lucide="door-closed" class="w-3 h-3 text-slate-500"></i>
+            <span>Ruang Rapat Lt. 3</span>
+          </button>
+
+          <!-- Tag 3: Kamera & Sound System -->
+          <button id="chip-kamera" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-full px-2.5 py-0.5 text-[10px] font-semibold flex items-center gap-1.5 shadow-2xs transition">
+            <i data-lucide="camera" class="w-3 h-3 text-slate-500"></i>
+            <span>Kamera &amp; Sound System</span>
+          </button>
+
+          <!-- Tag 4: Batas Jatuh Tempo 24 Jam -->
+          <button id="chip-batas-waktu" class="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-full px-2.5 py-0.5 text-[10px] font-bold flex items-center gap-1.5 shadow-2xs transition">
+            <i data-lucide="clock" class="w-3 h-3 text-rose-600"></i>
+            <span>Batas Jatuh Tempo 24 Jam</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= 2-COLUMN MAIN SECTION ================= -->
+      <div class="grid grid-cols-12 gap-4">
+
+        <!-- ================= LEFT COLUMN: TABLE CARD ================= -->
+        <div class="col-span-12 xl:col-span-8 lg:col-span-7 bg-white rounded-xl border border-slate-200/80 p-4 card-shadow flex flex-col justify-between">
+          <div>
+            <!-- Table Header Bar -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-100">
+              <div class="flex items-center gap-2">
+                <h2 class="text-sm font-extrabold text-slate-900 tracking-tight">
+                  Daftar Permohonan &amp; Riwayat Peminjaman
+                </h2>
+                <span id="badge-table-total" class="px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-600 bg-slate-100">
+                  142 Total
+                </span>
+              </div>
+
+              <!-- Search Bar -->
+              <div class="flex items-center gap-1.5">
+                <div class="relative">
+                  <i data-lucide="search" class="w-3 h-3 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2"></i>
+                  <input 
+                    id="search-loan-input" 
+                    type="text" 
+                    placeholder="Cari pemohon / kode..." 
+                    class="bg-[#f8fafc] border border-slate-200 rounded-lg pl-7 pr-2.5 py-1 text-[11px] text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-600 focus:bg-white w-44 sm:w-56 transition"
+                  >
+                </div>
+              </div>
+            </div>
+
+            <!-- Table Wrapper -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-100 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                    <th class="py-2.5 px-3">ID PINJAM</th>
+                    <th class="py-2.5 px-3">PEMOHON &amp; UNIT KERJA</th>
+                    <th class="py-2.5 px-3">ASET / FASILITAS</th>
+                    <th class="py-2.5 px-3">JADWAL &amp; KEPERLUAN</th>
+                    <th class="py-2.5 px-3 text-right">STATUS</th>
+                  </tr>
+                </thead>
+                <tbody id="loans-table-body">
+                  <!-- Rendered dynamically by peminjaman.js -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Table Footer / Pagination -->
+          <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-[11px] text-slate-500 mt-3">
+            <div class="flex items-center gap-1.5">
+              <span>Menampilkan</span>
+              <select id="loan-rows-per-page" class="border border-slate-200 rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-slate-700 bg-white outline-none cursor-pointer">
+                <option value="5">5 baris</option>
+                <option value="10">10 baris</option>
+                <option value="25">25 baris</option>
+              </select>
+              <span id="loan-pagination-total">dari 5 data peminjaman</span>
+            </div>
+
+            <!-- Pagination Buttons -->
+            <div id="loan-pagination-buttons" class="flex items-center gap-1 self-end sm:self-center">
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= RIGHT COLUMN: DETAIL CARD ================= -->
+        <div class="col-span-12 xl:col-span-4 lg:col-span-5 bg-white rounded-xl border border-slate-200/80 p-4 card-shadow space-y-3">
+
+          <!-- Detail Card Header -->
+          <div class="flex items-start justify-between pb-2.5 border-b border-slate-100">
+            <div class="flex items-start gap-2">
+              <div class="w-6 h-6 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 mt-0.5">
+                <i data-lucide="check-square" class="w-3.5 h-3.5"></i>
+              </div>
+              <div>
+                <h3 id="detail-title" class="text-xs font-extrabold text-slate-900 leading-tight">
+                  Detail Permohonan Peminjaman
+                </h3>
+                <div id="detail-subtitle" class="text-[10px] font-semibold text-slate-500 mt-0.5">
+                  LOAN-2025-0348 (Auditorium)
+                </div>
+              </div>
+            </div>
+
+            <!-- Status Badge -->
+            <span id="detail-status-badge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#ccfbf1] text-[#0f766e]">
+              Status: Diajukan
+            </span>
+          </div>
+
+          <!-- Metadata Key-Value List -->
+          <div class="space-y-1.5 text-[11px]">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-400">Pemohon:</span>
+              <span id="detail-requester" class="font-bold text-slate-800">Wahyu Setiawan, M.T.</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-400">Unit Kerja / Divisi:</span>
+              <span id="detail-dept" class="font-semibold text-slate-800">Subbag Data &amp; TI (Pusdatin)</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-400">Waktu Pelaksanaan:</span>
+              <div class="flex items-center gap-1.5">
+                <span id="detail-time" class="font-black text-[#0f2a71]">06 Mar 2025 (08:00 - 16:00)</span>
+                <button type="button" onclick="openModalRescheduleLoan()" class="text-[9.5px] font-bold text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded px-1.5 py-0.5 transition" title="Ubah Tanggal &amp; Jadwal Pelaksanaan">
+                  Ubah
+                </button>
+              </div>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-400">Estimasi Peserta:</span>
+              <span id="detail-attendees" class="font-semibold text-slate-800">120 Orang Pegawai</span>
+            </div>
+          </div>
+
+          <!-- Keperluan / Agenda Box -->
+          <div>
+            <div class="text-[10px] font-bold text-slate-500 mb-1">Keperluan / Agenda:</div>
+            <div class="bg-[#f8fafc] border border-slate-200/70 rounded-lg p-2.5">
+              <p id="detail-purpose" class="text-[11px] text-slate-700 leading-relaxed font-normal">
+                “Workshop Transformasi Digital SPBE dan Pelatihan Keamanan Siber bagi PIC Unit Kerja Pemerintah Daerah Tahun 2025.”
+              </p>
+            </div>
+          </div>
+
+          <!-- Anti-Bentrok Verification Card -->
+          <div class="bg-[#f0fdf9] border border-emerald-200/80 rounded-lg p-2.5 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
+                <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-600"></i>
+                <span class="text-[11px] font-bold text-slate-900 leading-none">
+                  Pemeriksaan Anti-Bentrok <span class="text-emerald-700">(Slot Valid)</span>
+                </span>
+              </div>
+              <span id="detail-availability-badge" class="text-[9px] font-black text-emerald-600">
+                100% TERSEDIA
+              </span>
+            </div>
+
+            <p id="detail-anticonflict" class="text-[10px] text-slate-600 leading-relaxed">
+              Tidak ditemukan jadwal ganda pada rentang 06 Mar 2025 jam 08:00 - 16:00 di Auditorium Sasana Graha. Ruangan steril pasca-acara sebelumnya.
+            </p>
+
+            <!-- Timeline Slot Chips -->
+            <div id="detail-slots-container" class="grid grid-cols-4 gap-1 pt-0.5">
+              <div class="px-1.5 py-1 rounded text-[9px] font-semibold text-center bg-[#e0f2fe] text-[#0369a1]">
+                <div>08:00-10:00</div>
+                <div class="text-[8px] font-normal leading-tight">(Aman)</div>
+              </div>
+              <div class="px-1.5 py-1 rounded text-[9px] font-semibold text-center bg-[#2563eb] text-white">
+                <div>10:00-12:00</div>
+                <div class="text-[8px] font-normal leading-tight">(Target)</div>
+              </div>
+              <div class="px-1.5 py-1 rounded text-[9px] font-semibold text-center bg-[#2563eb] text-white">
+                <div>13:00-15:00</div>
+                <div class="text-[8px] font-normal leading-tight">(Target)</div>
+              </div>
+              <div class="px-1.5 py-1 rounded text-[9px] font-semibold text-center bg-[#e2e8f0] text-slate-600">
+                <div>16:00-18:00</div>
+                <div class="text-[8px] font-normal leading-tight">(Kosong)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Checklist Verifikasi Kondisi Awal -->
+          <div class="space-y-1.5 pt-0.5">
+            <div class="flex items-center justify-between">
+              <div class="text-[11px] font-bold text-slate-900">Checklist Verifikasi Kondisi Awal</div>
+              <span class="text-[9px] font-semibold text-slate-400">Standar SOP-04</span>
+            </div>
+
+            <!-- Checklists List -->
+            <div id="detail-checklists-container" class="space-y-1.5">
+              <!-- Item 1 -->
+              <div class="flex items-start gap-2">
+                <div class="w-3.5 h-3.5 rounded bg-[#2563eb] text-white flex items-center justify-center shrink-0 mt-0.5">
+                  <i data-lucide="check" class="w-2.5 h-2.5 stroke-[3]"></i>
+                </div>
+                <div>
+                  <div class="text-[11px] font-bold text-slate-800 leading-tight">Kebersihan &amp; Kelayakan Ruang</div>
+                  <div class="text-[10px] text-slate-500 mt-0.5 leading-snug">Sistem tata udara (AC) &amp; kebersihan karpet prima.</div>
+                </div>
+              </div>
+
+              <!-- Item 2 -->
+              <div class="flex items-start gap-2">
+                <div class="w-3.5 h-3.5 rounded bg-[#2563eb] text-white flex items-center justify-center shrink-0 mt-0.5">
+                  <i data-lucide="check" class="w-2.5 h-2.5 stroke-[3]"></i>
+                </div>
+                <div>
+                  <div class="text-[11px] font-bold text-slate-800 leading-tight">Sound System &amp; 4 Mic Wireless</div>
+                  <div class="text-[10px] text-slate-500 mt-0.5 leading-snug">Baterai penuh, tidak ada kendala resonansi frekuensi.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tindakan & Otorisasi RBAC Peminjaman -->
+          <div id="detail-actions-container" class="pt-3 border-t border-slate-100"></div>
+
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ================= 3. MODAL AJUKAN PEMINJAMAN ================= -->
+<div id="modal-ajukan" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg p-5 space-y-3.5">
+    <!-- Header -->
+    <div class="flex items-center justify-between pb-2.5 border-b border-slate-100">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <h3 class="text-xs font-extrabold text-slate-900">Form Pengajuan Peminjaman Sarana</h3>
+          <p class="text-[10px] text-slate-400">Lengkapi formulir reservasi aset atau ruangan resmi</p>
+        </div>
+      </div>
+      <button onclick="closeModalAjukan()" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition">
+        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+      </button>
+    </div>
+
+    <!-- Form -->
+    <form onsubmit="handleFormSubmit(event)" class="space-y-3">
+      <div>
+        <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Nama Pemohon</label>
+        <input id="form-pemohon" type="text" required placeholder="Contoh: Budi Santoso, S.Kom" class="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Unit Kerja / Divisi</label>
+        <input id="form-unit" type="text" required placeholder="Contoh: Subbag Perencanaan & Keuangan" class="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Pilihan Sarana / Ruangan (Dari Inventaris Aset)</label>
+        <select id="form-sarpras" required onchange="handleAssetSelectChange()" class="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-2 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white text-slate-800 font-medium">
+          <option value="" disabled selected>-- Memuat inventaris aset... --</option>
+        </select>
+        <!-- Info Aset Terpilih -->
+        <div id="form-sarpras-info" class="hidden mt-1.5 p-2 bg-[#f0f9ff] border border-blue-100 rounded-lg text-[10px] text-slate-600 flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            <i data-lucide="info" class="w-3.5 h-3.5 text-blue-600 shrink-0"></i>
+            <span id="form-sarpras-desc">-</span>
+          </div>
+          <span id="form-sarpras-badge" class="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800">Tersedia</span>
+        </div>
+      </div>
+
+      <div class="space-y-1.5">
+        <label class="block text-[11px] font-bold text-slate-700">Jadwal Pelaksanaan &amp; Pengembalian</label>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <!-- Waktu Mulai -->
+          <div class="bg-[#f8fafc] border border-slate-200 rounded-lg p-2 space-y-1">
+            <span class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Waktu Mulai Pinjam</span>
+            <div class="grid grid-cols-2 gap-1.5">
+              <input id="form-tgl-mulai" type="date" required class="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white text-slate-800 outline-none focus:border-blue-500">
+              <input id="form-jam-mulai" type="time" value="08:00" required class="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white text-slate-800 outline-none focus:border-blue-500">
+            </div>
+          </div>
+
+          <!-- Waktu Selesai -->
+          <div class="bg-[#f8fafc] border border-slate-200 rounded-lg p-2 space-y-1">
+            <span class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Target Pengembalian</span>
+            <div class="grid grid-cols-2 gap-1.5">
+              <input id="form-tgl-selesai" type="date" required class="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white text-slate-800 outline-none focus:border-blue-500">
+              <input id="form-jam-selesai" type="time" value="16:00" required class="w-full text-xs border border-slate-200 rounded px-1.5 py-1 bg-white text-slate-800 outline-none focus:border-blue-500">
+            </div>
+          </div>
+        </div>
+        <input id="form-tanggal" type="hidden">
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Estimasi Peserta / Pengguna</label>
+        <input id="form-peserta" type="number" required min="1" value="1" placeholder="Contoh: 15" class="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Keperluan / Agenda</label>
+        <textarea id="form-agenda" rows="2" required placeholder="Jelaskan tujuan kegiatan dan agenda penggunaan sarana..." class="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"></textarea>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center justify-end gap-2 pt-2.5 border-t border-slate-100">
+        <button type="button" onclick="closeModalAjukan()" class="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+          Batal
+        </button>
+        <button type="submit" class="px-3.5 py-1.5 rounded-xl bg-[#0f2a71] hover:bg-[#0a1e54] text-white text-xs font-bold shadow-sm transition">
+          Kirim Permohonan
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= 4. MODAL UBAH RENTANG JADWAL FILTER ================= -->
+<div id="modal-rentang-jadwal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-sm p-5 space-y-3.5">
+    <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
+          <i data-lucide="calendar" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <h3 class="text-xs font-extrabold text-slate-900">Ubah Filter Rentang Jadwal</h3>
+          <p class="text-[10px] text-slate-400">Pilih rentang tanggal pelaksanaan peminjaman</p>
+        </div>
+      </div>
+      <button type="button" onclick="closeModalRentangJadwal()" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition">
+        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+      </button>
+    </div>
+
+    <div class="space-y-2.5 text-xs">
+      <div>
+        <label class="block text-[11px] font-bold text-slate-700 mb-1">Tanggal Mulai</label>
+        <input id="filter-jadwal-start" type="date" class="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-blue-500">
+      </div>
+      <div>
+        <label class="block text-[11px] font-bold text-slate-700 mb-1">Tanggal Selesai</label>
+        <input id="filter-jadwal-end" type="date" class="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 outline-none focus:border-blue-500">
+      </div>
+
+      <!-- Preset Shortcuts -->
+      <div class="pt-1">
+        <span class="text-[10px] font-bold text-slate-500 block mb-1">Preset Cepat:</span>
+        <div class="grid grid-cols-3 gap-1.5 text-[10px]">
+          <button type="button" onclick="setJadwalPreset('hari_ini')" class="py-1 px-2 rounded border border-slate-200 hover:bg-slate-50 font-semibold text-slate-700 text-center">Hari Ini</button>
+          <button type="button" onclick="setJadwalPreset('minggu_ini')" class="py-1 px-2 rounded border border-slate-200 hover:bg-slate-50 font-semibold text-slate-700 text-center">Minggu Ini</button>
+          <button type="button" onclick="setJadwalPreset('bulan_ini')" class="py-1 px-2 rounded border border-slate-200 hover:bg-slate-50 font-semibold text-slate-700 text-center">Bulan Ini</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+      <button type="button" onclick="resetJadwalFilter()" class="text-[11px] font-bold text-rose-600 hover:underline">
+        Reset Semua
+      </button>
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="closeModalRentangJadwal()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
+          Batal
+        </button>
+        <button type="button" onclick="applyJadwalFilter()" class="px-3.5 py-1.5 rounded-lg bg-[#0f2a71] hover:bg-[#0a1e54] text-white text-xs font-bold shadow-sm transition">
+          Terapkan
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 5. MODAL UBAH JADWAL PEMINJAMAN TERPILIH ================= -->
+<div id="modal-reschedule" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-5 space-y-3.5">
+    <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
+          <i data-lucide="calendar-clock" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <h3 class="text-xs font-extrabold text-slate-900">Ubah Jadwal Peminjaman</h3>
+          <p id="reschedule-loan-code" class="text-[10px] font-bold text-blue-700">LOAN-2025-0348</p>
+        </div>
+      </div>
+      <button type="button" onclick="closeModalReschedule()" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition">
+        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+      </button>
+    </div>
+
+    <form onsubmit="handleRescheduleSubmit(event)" class="space-y-3">
+      <div class="bg-slate-50 p-2 rounded-lg border border-slate-200/80 text-[11px]">
+        <span class="text-slate-500">Sarana / Aset:</span>
+        <span id="reschedule-asset-name" class="font-bold text-slate-800 ml-1">Laptop ThinkPad T14</span>
+      </div>
+
+      <div class="space-y-2">
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">Waktu Mulai Pinjam Baru</label>
+          <div class="grid grid-cols-2 gap-2">
+            <input id="reschedule-tgl-mulai" type="date" required class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-800 outline-none focus:border-blue-500">
+            <input id="reschedule-jam-mulai" type="time" value="08:00" required class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-800 outline-none focus:border-blue-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">Target Pengembalian Baru</label>
+          <div class="grid grid-cols-2 gap-2">
+            <input id="reschedule-tgl-selesai" type="date" required class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-800 outline-none focus:border-blue-500">
+            <input id="reschedule-jam-selesai" type="time" value="16:00" required class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-800 outline-none focus:border-blue-500">
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Alasan Perubahan Jadwal</label>
+        <input id="reschedule-reason" type="text" placeholder="Contoh: Penyesuaian jadwal rapat koordinasi dekanat" class="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2.5 border-t border-slate-100">
+        <button type="button" onclick="closeModalReschedule()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">
+          Batal
+        </button>
+        <button type="submit" class="px-3.5 py-1.5 rounded-lg bg-[#0f2a71] hover:bg-[#0a1e54] text-white text-xs font-bold shadow-sm transition">
+          Simpan Perubahan Jadwal
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Scripts -->
+<!-- RBAC & Navigation Scripts -->
+<script src="../js/auth.js"></script>
+<script src="../js/rbac.js"></script>
+<script src="../js/navigation.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/peminjaman.js"></script>
+</body>
+</html>

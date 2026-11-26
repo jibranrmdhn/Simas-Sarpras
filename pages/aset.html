@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <!-- Early User Session Sync (Mencegah Flash Role saat Load) -->
+  <script>
+    try {
+      window.__SIMAS_USER__ = JSON.parse(localStorage.getItem('simas_current_user') || 'null');
+    } catch (e) {
+      window.__SIMAS_USER__ = null;
+    }
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIMAS - Daftar Inventaris Sarana & Aset</title>
+  <meta name="description" content="Kelola, pantau kondisi fisik, penanggung jawab, serta cetak label QR/Barcode aset di seluruh unit kerja institusi.">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            navy: { DEFAULT: '#102f86', dark: '#0b2266' },
+            soft: { DEFAULT: '#dde8f8', hover: '#cfdef5' },
+            page: '#f3f6fb',
+          },
+        },
+      },
+    };
+  </script>
+
+  <link rel="stylesheet" href="../css/aset.css">
+  <style>
+    @media print {
+      aside, header, #sidebar-overlay, #quick-filters, .view-btn, #btn-reset-filter, #btn-filter-lanjut, .btn-soft, #btn-tambah-aset, #btn-tambah-aksi, .no-print, #pagination, select {
+        display: none !important;
+      }
+      body {
+        background: white !important;
+        color: black !important;
+      }
+      th:last-child, td:last-child, input[type="checkbox"] {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-page text-slate-800 font-sans antialiased">
+
+<!-- Mobile Sidebar Backdrop Overlay -->
+<div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 hidden md:hidden"></div>
+
+<div class="flex min-h-screen">
+
+  <!-- ================= SIDEBAR ================= -->
+  <!-- Mobile Sidebar Backdrop Overlay -->
+  <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 hidden md:hidden"></div>
+
+  <!-- ================= LEFT SIDEBAR ================= -->
+  <aside id="main-sidebar" class="w-60 shrink-0 bg-[#f0f5fc] border-r border-slate-200/80 flex flex-col fixed md:sticky top-0 h-screen z-40 -translate-x-full md:translate-x-0 transition-transform duration-300">
+    <!-- Brand / Logo Area -->
+    <div class="px-5 pt-5 pb-3">
+      <div class="flex items-center justify-between">
+        <a href="index.html" class="flex items-center gap-3">
+          <!-- Brand Cube Icon -->
+          <div class="w-9 h-9 rounded-xl bg-[#1342b8] flex items-center justify-center text-white shadow-sm shadow-blue-700/25">
+            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-[15px] font-extrabold tracking-tight text-[#0f2a71] leading-none">SIMAS</h1>
+            <p class="text-[10px] text-slate-500 font-medium mt-1">Sistem Sarana &amp; Prasarana</p>
+          </div>
+        </a>
+        <button onclick="toggleSidebar()" class="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Active Role Info Badge (Static Indicator) -->
+      <div id="role-badge" class="mt-3.5 w-full px-3 py-2.5 bg-[#dbe8fb] rounded-xl flex items-center justify-between text-left select-none">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <i data-lucide="shield-check" class="w-4 h-4 text-[#0f2a71] shrink-0"></i>
+          <div class="leading-tight truncate">
+            <span class="text-[10px] text-slate-600 font-semibold block">Peran Aktif</span>
+            <span id="sidebar-role-label" class="text-xs font-bold text-[#0f2a71] truncate block"></span>
+          </div>
+        </div>
+      </div>
+      <script>
+        if (window.__SIMAS_USER__) {
+          var _r = document.getElementById('sidebar-role-label');
+          if (_r) _r.textContent = window.__SIMAS_USER__.roleLabel || window.__SIMAS_USER__.role || '';
+        }
+      </script>
+    </div>
+
+    <!-- Navigation Menu Items -->
+    <nav class="px-3 mt-2 flex-1 overflow-y-auto">
+      <div class="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+        Menu Operasional
+      </div>
+      <div id="sidebar-menu-list" class="space-y-1">
+        <!-- Rendered dynamically by aset.js -->
+      </div>
+    </nav>
+
+        <!-- Footer System Info -->
+    <div class="p-3 mt-auto space-y-1.5">
+      <!-- Tombol Logout Sidebar -->
+      <a href="login.html" title="Keluar / Logout" class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition group">
+        <i data-lucide="log-out" class="w-4 h-4 text-rose-500 group-hover:text-rose-700 transition"></i>
+        <span>Keluar dari Sistem</span>
+      </a>
+      <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-[#dbe8fb]">
+        <div class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+          <i data-lucide="badge-check" class="w-3.5 h-3.5 text-teal-600"></i>
+          <span>v2.4.0 (Enterprise)</span>
+        </div>
+        <a href="#" class="text-[11px] font-bold text-[#0f2a71] hover:underline">Bantuan</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <div class="flex-1 min-w-0 flex flex-col">
+
+    <!-- Top bar -->
+    <header class="h-14 bg-white/95 backdrop-blur border-b border-slate-200/80 sticky top-0 z-30 px-6 flex items-center justify-between gap-4">
+      <!-- Breadcrumb & Search Bar -->
+      <div class="flex items-center gap-4 flex-1 max-w-2xl min-w-0">
+        <!-- Mobile Hamburger Toggle -->
+        <button onclick="toggleSidebar()" class="md:hidden p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition shrink-0" aria-label="Toggle Sidebar">
+          <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+
+        <nav class="flex items-center text-xs font-medium text-slate-500 shrink-0">
+          <a href="index.html" class="hover:text-slate-800 transition">SIMAS</a>
+          <span class="mx-1.5 text-slate-400 font-normal">&gt;</span>
+          <span class="text-slate-900 font-bold">Workspace</span>
+        </nav>
+
+        <!-- Search Bar with Shortcut -->
+        <label class="relative flex-1 max-w-md">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+          <input id="global-search" type="text" placeholder="Cari aset, tiket, ruangan, kode QR... (Ctrl + K)"
+                 class="w-full h-8 rounded-lg bg-[#edf3fb] border border-transparent pl-9 pr-3 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:bg-white focus:border-blue-400 transition">
+        </label>
+      </div>
+
+      <!-- Action Buttons & User Profile -->
+      <div class="flex items-center gap-4 shrink-0">
+        <!-- Notification Bell with Red Indicator -->
+        <button id="btn-header-notif" class="relative text-slate-700 hover:text-slate-900 p-1.5 transition">
+          <i data-lucide="bell" class="w-[18px] h-[18px]"></i>
+          <span class="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-rose-600 ring-2 ring-white"></span>
+        </button>
+
+        <!-- User Profile Dropdown -->
+        <div id="btn-header-profile" class="flex items-center gap-2 select-none">
+          <img 
+            id="header-user-avatar"
+            src="../assets/avatar_bambang.jpg" 
+            onerror="this.src='https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=96&q=80'" 
+            alt="User Avatar" 
+            class="w-7 h-7 rounded-full object-cover ring-1 ring-slate-200"
+          >
+          <div class="text-left leading-tight hidden sm:block">
+            <div id="header-user-name" class="text-xs font-bold text-slate-900 truncate max-w-[150px]"></div>
+            <div id="header-user-role" class="text-[10px] font-medium text-slate-500 truncate"></div>
+          </div>
+        </div>
+        <script>
+          if (window.__SIMAS_USER__) {
+            var _un = document.getElementById('header-user-name');
+            var _ur = document.getElementById('header-user-role');
+            var _ua = document.getElementById('header-user-avatar');
+            if (_un) _un.textContent = window.__SIMAS_USER__.nama || window.__SIMAS_USER__.username || '';
+            if (_ur) _ur.textContent = window.__SIMAS_USER__.roleLabel || window.__SIMAS_USER__.role || '';
+            if (_ua && window.__SIMAS_USER__.avatar) _ua.src = window.__SIMAS_USER__.avatar;
+          }
+        </script>
+        <!-- Tombol Logout ke Halaman Login -->
+        <a href="login.html" title="Keluar / Logout" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition flex items-center gap-1">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </a>
+      </div>
+    </header>
+
+    <main class="p-5 pb-10 space-y-4">
+
+      <!-- ===== STAT CARDS ===== -->
+      <section id="asset-stats" class="grid grid-cols-2 xl:grid-cols-4 gap-4"></section>
+
+      <!-- ===== PAGE HEADER ===== -->
+      <section class="bg-white rounded-2xl px-5 py-4 soft-shadow flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div class="max-w-xl">
+          <div class="flex items-center gap-2">
+            <span class="px-1.5 py-0.5 rounded bg-[#e2e3fb] text-[#3b3fa8] text-[9px] font-extrabold tracking-wider uppercase">Modul Sarana</span>
+            <span class="text-[10px] font-semibold text-slate-600">Perbaruan otomatis: Hari ini 09:30</span>
+          </div>
+          <h1 class="mt-1.5 text-xl font-extrabold tracking-tight text-slate-900">Daftar Inventaris Sarana &amp; Aset</h1>
+          <p class="mt-1 text-xs leading-relaxed text-slate-600">Kelola, pantau kondisi fisik, penanggung jawab, serta cetak label QR/Barcode aset di seluruh unit kerja institusi.</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+          <button id="btn-export" onclick="exportAssetsCSV()" class="h-9 px-3.5 rounded-xl bg-[#e8f0fe] hover:bg-[#dbe7fd] text-[#173b8a] border border-blue-200/80 text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap"><i data-lucide="download" class="w-3.5 h-3.5"></i><span>Export CSV</span></button>
+          <button id="btn-tambah-aset" onclick="openAddModal()" class="h-9 px-4 rounded-xl bg-navy hover:bg-navy-dark text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition whitespace-nowrap">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i><span>+ Tambah Aset Baru</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ===== SEARCH & FILTER ===== -->
+      <section class="bg-white rounded-2xl p-3 soft-shadow space-y-3">
+        <div class="flex flex-wrap items-center gap-3">
+          <label class="relative flex-1 min-w-[260px]">
+            <i data-lucide="search" class="w-[18px] h-[18px] text-slate-500 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input id="asset-search" type="text" placeholder="Cari kode aset (contoh: SAR/2025/0102), nama barang, atau serial number..."
+                   class="w-full h-9 rounded-lg bg-[#e6edf8] pl-9 pr-12 text-xs text-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:bg-white transition">
+            <kbd class="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-[#d7e1f1] text-[9px] font-bold text-slate-600">⌘K</kbd>
+          </label>
+
+          <!-- View toggle -->
+          <div class="flex items-center p-0.5 rounded-lg bg-[#e6edf8]" role="tablist">
+            <button id="view-table" data-view="table" class="view-btn is-active"><i data-lucide="table-2" class="w-3.5 h-3.5"></i> Tabel</button>
+            <button id="view-grid" data-view="grid" class="view-btn"><i data-lucide="layout-grid" class="w-3.5 h-3.5"></i> Grid</button>
+          </div>
+
+          <button id="btn-filter-lanjut" class="btn-soft h-[26px]"><i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i> Filter Lanjut</button>
+        </div>
+
+        <!-- Collapsible Advanced Filter Panel -->
+        <div id="advanced-filter-panel" class="hidden pt-3 border-t border-slate-100 transition-all">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-[#f8fafc] p-3 rounded-xl border border-slate-200/80">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Kategori Aset</label>
+              <select id="adv-filter-kategori" class="w-full text-xs h-8 border border-slate-200 rounded-lg px-2 bg-white text-slate-700 outline-none focus:ring-1 focus:ring-blue-500">
+                <option value="all">Semua Kategori</option>
+                <option value="Elektronik">Elektronik</option>
+                <option value="Alat Lab">Alat Lab</option>
+                <option value="Fasilitas">Fasilitas Gedung</option>
+                <option value="Kendaraan">Kendaraan</option>
+                <option value="Furnitur">Furnitur &amp; Meubel</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Kondisi Fisik</label>
+              <select id="adv-filter-kondisi" class="w-full text-xs h-8 border border-slate-200 rounded-lg px-2 bg-white text-slate-700 outline-none focus:ring-1 focus:ring-blue-500">
+                <option value="all">Semua Kondisi</option>
+                <option value="Baik">Baik</option>
+                <option value="Cukup">Cukup / Normal</option>
+                <option value="Rusak Ringan">Rusak Ringan</option>
+                <option value="Rusak Berat">Rusak Berat</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Status Ketersediaan</label>
+              <select id="adv-filter-status" class="w-full text-xs h-8 border border-slate-200 rounded-lg px-2 bg-white text-slate-700 outline-none focus:ring-1 focus:ring-blue-500">
+                <option value="all">Semua Status</option>
+                <option value="Tersedia">Tersedia</option>
+                <option value="Dipinjam">Dipinjam</option>
+                <option value="Perbaikan">Dalam Perbaikan</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Rentang Nilai Aset</label>
+              <select id="adv-filter-nilai" class="w-full text-xs h-8 border border-slate-200 rounded-lg px-2 bg-white text-slate-700 outline-none focus:ring-1 focus:ring-blue-500">
+                <option value="all">Semua Nilai</option>
+                <option value="low">&lt; Rp 10 Juta</option>
+                <option value="mid">Rp 10 Juta - Rp 50 Juta</option>
+                <option value="high">&gt; Rp 50 Juta</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex items-center justify-end gap-2 mt-2.5">
+            <button id="btn-adv-reset" type="button" class="px-3 py-1 rounded-lg text-[11px] font-semibold text-slate-600 hover:bg-slate-100 transition">Reset</button>
+            <button id="btn-adv-apply" type="button" class="px-3.5 py-1 rounded-lg bg-[#0f2a71] hover:bg-[#0a1e54] text-white text-[11px] font-bold shadow-xs transition">Terapkan Filter</button>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-[10px] font-semibold text-slate-600 mr-0.5">Filter Cepat:</span>
+          <div id="quick-filters" class="flex flex-wrap gap-1.5"></div>
+          <button id="btn-reset-filter" class="ml-auto flex items-center gap-1 text-[10px] font-bold text-[#102f86] hover:underline">
+            <i data-lucide="rotate-cw" class="w-3 h-3"></i> Reset Filter
+          </button>
+        </div>
+      </section>
+
+      <!-- ===== TABLE ===== -->
+      <section class="bg-white rounded-2xl soft-shadow overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[1100px] text-left">
+            <thead class="bg-[#dce7f7]">
+              <tr class="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-700">
+                <th class="w-12 pl-3 py-4"><input id="check-all" type="checkbox" class="chk"></th>
+                <th class="py-4 pr-4">
+                  <button id="sort-kode" class="flex items-center gap-1 uppercase tracking-[0.1em]">Kode Aset <i data-lucide="chevrons-up-down" class="w-3 h-3"></i></button>
+                </th>
+                <th class="py-4 pr-4">Nama Barang &amp; Spesifikasi</th>
+                <th class="py-4 pr-4">Kategori</th>
+                <th class="py-4 pr-4">Lokasi Terkini</th>
+                <th class="py-4 pr-4">Kondisi</th>
+                <th class="py-4 pr-4">Status</th>
+                <th class="py-4 pr-4">Penanggung Jawab</th>
+                <th class="py-4 pr-4 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="asset-table-body" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+
+        <!-- Grid view (hidden by default) -->
+        <div id="asset-grid" class="hidden p-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4"></div>
+
+        <!-- Footer / Pagination -->
+        <div class="bg-[#f1f5fb] px-3 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-4 text-[10px] text-slate-600">
+            <label class="flex items-center gap-2 font-semibold">
+              Baris per halaman:
+              <select id="rows-per-page" class="h-6 px-2 rounded-md bg-white text-[10px] font-bold text-slate-800 focus:outline-none">
+                <option>10</option><option>25</option><option>50</option>
+              </select>
+            </label>
+            <span id="page-info" class="text-[11px]"></span>
+          </div>
+          <div id="pagination" class="flex items-center gap-1"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ================= 1. MODAL FORM INPUT / EDIT ASET (JAVASCRIPT VALIDATION) ================= -->
+<div id="modal-asset-form" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-xl max-h-[92vh] overflow-y-auto p-6 space-y-4">
+    <!-- Header -->
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div class="flex items-center gap-2.5">
+        <div id="modal-form-icon-box" class="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
+          <i id="modal-form-icon" data-lucide="plus-circle" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <h3 id="modal-asset-title" class="text-sm font-extrabold text-slate-900">Tambah Aset Baru</h3>
+          <p id="modal-asset-subtitle" class="text-[11px] text-slate-500">Lengkapi informasi inventaris sarana institusi dengan data valid</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <a id="link-open-standalone-form" href="form.html" class="text-[11px] font-bold text-blue-700 hover:text-blue-900 hover:underline flex items-center gap-1 mr-1" title="Buka Formulir di Halaman Penuh">
+          <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+          <span>Buka di Halaman Penuh</span>
+        </a>
+        <button onclick="closeAssetModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Interactive Form -->
+    <form id="asset-form" onsubmit="handleAssetFormSubmit(event)" class="space-y-3.5" novalidate>
+      <input type="hidden" id="form-mode" value="add">
+      <input type="hidden" id="form-orig-kode" value="">
+
+      <!-- Row: Kode Aset & Serial Number -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">
+            Kode Aset (NUP) <span class="text-rose-500">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="form-kode" 
+            placeholder="Contoh: SAR/2025/0301" 
+            class="w-full text-xs font-mono font-bold border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition"
+          >
+          <p id="err-kode" class="text-[10px] text-rose-600 font-semibold hidden mt-1"></p>
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">
+            Nomor Seri (Serial Number) <span class="text-rose-500">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="form-serial" 
+            placeholder="Contoh: PF3K9820-T14" 
+            class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition"
+          >
+          <p id="err-serial" class="text-[10px] text-rose-600 font-semibold hidden mt-1"></p>
+        </div>
+      </div>
+
+      <!-- Field: Nama Barang & Kategori -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="sm:col-span-2">
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">
+            Nama Sarana / Barang <span class="text-rose-500">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="form-nama" 
+            placeholder="Contoh: Interactive Smart Display 75 Inch" 
+            class="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition"
+          >
+          <p id="err-nama" class="text-[10px] text-rose-600 font-semibold hidden mt-1"></p>
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">
+            Kategori <span class="text-rose-500">*</span>
+          </label>
+          <select 
+            id="form-kategori" 
+            class="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-2 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white cursor-pointer"
+          >
+            <option value="">Pilih Kategori</option>
+            <option value="Elektronik">Elektronik</option>
+            <option value="Alat Lab">Alat Lab</option>
+            <option value="Utilitas">Utilitas</option>
+            <option value="Mebel">Mebel</option>
+          </select>
+          <p id="err-kategori" class="text-[10px] text-rose-600 font-semibold hidden mt-1"></p>
+        </div>
+      </div>
+
+      <!-- Field: Spesifikasi Teknis -->
+      <div>
+        <label class="block text-[11px] font-bold text-slate-700 mb-1">
+          Spesifikasi Teknis &amp; Deskripsi <span class="text-rose-500">*</span>
+        </label>
+        <textarea 
+          id="form-spesifikasi" 
+          rows="2" 
+          placeholder="Contoh: 4K UHD, Multi-touch 20 Points, Built-in OS Android 12, OPS PC Slot" 
+          class="w-full text-xs border border-slate-200 rounded-lg p-2.5 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition resize-none"
+        ></textarea>
+        <p id="err-spesifikasi" class="text-[10px] text-rose-600 font-semibold hidden mt-1"></p>
+      </div>
+
+      <!-- Row: Lokasi Gedung & Ruangan -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">
+            Gedung / Kampus <span class="text-rose-500">*</span>
+          </label>
+          <select 
+            id="form-gedung" 
+            class="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-2 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white cursor-pointer"
+          >
+            <option value="">Pilih Gedung</option>
+            <option value="Gedung A, Lt. 1">Gedung A, Lt. 1</option>
+            <option value="Gedung A, Lt. 3">Gedung A, Lt. 3</option>
+            <option value="Gedung B, Lt. 2">Gedung B, Lt. 2</option>
+            <option value="GKB, Lt. 1">GKB, Lt. 1</option>
+            <option value="Lab Terpadu">Lab Terpadu</option>
+            <option value="Gedung Rektorat">Gedung Rektorat</option>
+          </select>
+          <p id="err-gedung" class="text-[10px] text-rose-600 font-semibold hidden mt-1"></p>
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">
+            Nama Ruangan Spesifik <span class="text-rose-500">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="form-ruang" 
+            placeholder="Contoh: R. 302 - Staf Keuangan" 
+            class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition"
+          >
+          <p id="err-ruang" class="text-[10px] text-rose-600 font-semibold hidden mt-1"></p>
+        </div>
+      </div>
+
+      <!-- Row: Kondisi, Status, dan Penanggung Jawab -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">
+            Kondisi Fisik <span class="text-rose-500">*</span>
+          </label>
+          <select 
+            id="form-kondisi" 
+            class="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-2 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white cursor-pointer"
+          >
+            <option value="Baik">Baik</option>
+            <option value="Cukup">Cukup</option>
+            <option value="Rusak Ringan">Rusak Ringan</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">
+            Status Inventaris <span class="text-rose-500">*</span>
+          </label>
+          <select 
+            id="form-status" 
+            class="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-2 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white cursor-pointer"
+          >
+            <option value="Tersedia">Tersedia</option>
+            <option value="Dipinjam">Dipinjam</option>
+            <option value="Perawatan">Perawatan</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">
+            Penanggung Jawab (PJ) <span class="text-rose-500">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="form-pj" 
+            placeholder="Contoh: Bambang Irawan" 
+            class="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition"
+          >
+          <p id="err-pj" class="text-[10px] text-rose-600 font-semibold hidden mt-1"></p>
+        </div>
+      </div>
+
+      <!-- Action Buttons Footer -->
+      <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+        <button 
+          type="button" 
+          onclick="closeAssetModal()" 
+          class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
+        >
+          Batal
+        </button>
+        <button 
+          type="submit" 
+          id="btn-submit-asset-form"
+          class="px-4 py-2 rounded-xl bg-[#0f2a71] hover:bg-[#0a1e54] text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5"
+        >
+          <i data-lucide="save" class="w-3.5 h-3.5"></i>
+          <span id="btn-submit-asset-label">Simpan Data Aset</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= 2. MODAL KONFIRMASI HAPUS (DELETE MODAL) ================= -->
+<div id="modal-delete-confirm" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4">
+    <div class="flex items-start gap-3.5">
+      <div class="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+        <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <h3 class="text-sm font-extrabold text-slate-900">Konfirmasi Hapus Data Aset</h3>
+        <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+          Apakah Anda yakin ingin menghapus aset <strong id="del-asset-name" class="text-slate-900"></strong> (<span id="del-asset-code" class="font-mono text-blue-700 font-bold"></span>)?
+        </p>
+        <p class="text-[11px] text-rose-600 font-medium mt-1.5">
+          Tindakan ini akan menghapus data dari daftar inventaris master secara real-time.
+        </p>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+      <button 
+        type="button" 
+        onclick="closeDeleteModal()" 
+        class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
+      >
+        Batalkan
+      </button>
+      <button 
+        type="button" 
+        onclick="confirmDeleteAsset()" 
+        class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5"
+      >
+        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+        <span>Ya, Hapus Aset</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 3. MODAL PREVIEW LABEL QR & BARCODE ================= -->
+<div id="modal-qr-preview" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-sm p-6 text-center space-y-4">
+    <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+      <h3 class="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Label Inventaris Sarpras</h3>
+      <button onclick="closeQrModal()" class="text-slate-400 hover:text-slate-700">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <!-- Printable Card Box -->
+    <div id="qr-printable-box" class="p-4 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 space-y-3">
+      <div class="text-[10px] font-black tracking-widest text-[#0f2a71] uppercase">INSTITUSI SARPRAS RESMI</div>
+      <div class="w-32 h-32 mx-auto bg-white p-2 rounded-lg border border-slate-200 flex items-center justify-center shadow-xs">
+        <!-- Lucide QR Placeholder Image -->
+        <img id="qr-modal-image" src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=SAR-ASSET" alt="QR Code" class="w-full h-full object-contain">
+      </div>
+      <div>
+        <div id="qr-modal-code" class="font-mono text-xs font-black text-blue-900">SAR/2025/0102</div>
+        <div id="qr-modal-name" class="text-xs font-bold text-slate-800 mt-0.5">Laptop ThinkPad T14 Gen 4</div>
+        <div id="qr-modal-loc" class="text-[10px] text-slate-500 mt-0.5">Gedung A, Lt. 3 • Dewi Sartika</div>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-center gap-2 pt-1">
+      <button type="button" onclick="closeQrModal()" class="px-3.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer">
+        Tutup
+      </button>
+      <button type="button" onclick="downloadQrLabelHTML()" class="px-4 py-1.5 rounded-lg bg-[#0f2a71] text-white text-xs font-bold hover:bg-[#0a1e54] flex items-center gap-1.5 shadow-sm cursor-pointer">
+        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+        <span>Unduh Label QR</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Feedback Container -->
+<div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+<!-- RBAC & Navigation Scripts -->
+<script src="../js/auth.js"></script>
+<script src="../js/rbac.js"></script>
+<script src="../js/navigation.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/aset.js"></script>
+</body>
+</html>

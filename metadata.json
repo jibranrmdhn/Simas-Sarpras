@@ -1,0 +1,6 @@
+{
+  "name": "SIMAS - Sistem Informasi Sarana & Prasarana Kampus",
+  "description": "Aplikasi web manajemen sarana dan prasarana kampus berbasis Fullstack dengan sistem Role-Based Access Control (RBAC).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

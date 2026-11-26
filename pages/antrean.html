@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <!-- Early User Session Sync (Mencegah Flash Role saat Load) -->
+  <script>
+    try {
+      window.__SIMAS_USER__ = JSON.parse(localStorage.getItem('simas_current_user') || 'null');
+    } catch (e) {
+      window.__SIMAS_USER__ = null;
+    }
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIMAS - Antrean Persetujuan &amp; Otorisasi Sarpras</title>
+  <meta name="description"
+    content="Sentralisasi verifikasi dan persetujuan pengajuan peminjaman, permohonan mutasi aset, serta usulan penghapusan sarana institusi.">
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@500;700&display=swap"
+    rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            navy: {
+              DEFAULT: '#0f2a71',
+              dark: '#091a48',
+              light: '#16428c',
+            },
+            canvas: '#f4f7fb',
+            softblue: '#edf4fe',
+          }
+        }
+      }
+    };
+  </script>
+
+  <link rel="stylesheet" href="../css/antrean.css">
+</head>
+
+<body class="bg-[#f4f7fb] text-slate-800 antialiased min-h-screen">
+
+  <div class="flex min-h-screen w-full relative">
+
+    <!-- ================= 1. SIDEBAR NAVIGASI ================= -->
+    <!-- Mobile Sidebar Backdrop Overlay -->
+  <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 hidden md:hidden"></div>
+
+  <!-- ================= LEFT SIDEBAR ================= -->
+  <aside id="main-sidebar" class="w-60 shrink-0 bg-[#f0f5fc] border-r border-slate-200/80 flex flex-col fixed md:sticky top-0 h-screen z-40 -translate-x-full md:translate-x-0 transition-transform duration-300">
+    <!-- Brand / Logo Area -->
+    <div class="px-5 pt-5 pb-3">
+      <div class="flex items-center justify-between">
+        <a href="index.html" class="flex items-center gap-3">
+          <!-- Brand Cube Icon -->
+          <div class="w-9 h-9 rounded-xl bg-[#1342b8] flex items-center justify-center text-white shadow-sm shadow-blue-700/25">
+            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-[15px] font-extrabold tracking-tight text-[#0f2a71] leading-none">SIMAS</h1>
+            <p class="text-[10px] text-slate-500 font-medium mt-1">Sistem Sarana &amp; Prasarana</p>
+          </div>
+        </a>
+        <button onclick="toggleSidebar()" class="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Active Role Info Badge (Static Indicator) -->
+      <div id="role-badge" class="mt-3.5 w-full px-3 py-2.5 bg-[#dbe8fb] rounded-xl flex items-center justify-between text-left select-none">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <i data-lucide="shield-check" class="w-4 h-4 text-[#0f2a71] shrink-0"></i>
+          <div class="leading-tight truncate">
+            <span class="text-[10px] text-slate-600 font-semibold block">Peran Aktif</span>
+            <span id="sidebar-role-label" class="text-xs font-bold text-[#0f2a71] truncate block"></span>
+          </div>
+        </div>
+      </div>
+      <script>
+        if (window.__SIMAS_USER__) {
+          var _r = document.getElementById('sidebar-role-label');
+          if (_r) _r.textContent = window.__SIMAS_USER__.roleLabel || window.__SIMAS_USER__.role || '';
+        }
+      </script>
+    </div>
+
+    <!-- Navigation Menu Items -->
+    <nav class="px-3 mt-2 flex-1 overflow-y-auto">
+        <div class="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+          Menu Operasional
+        </div>
+        <div id="sidebar-menu-list" class="space-y-1">
+          <!-- Rendered dynamically by antrean.js -->
+        </div>
+      </nav>
+
+          <!-- Footer System Info -->
+    <div class="p-3 mt-auto space-y-1.5">
+      <!-- Tombol Logout Sidebar -->
+      <a href="login.html" title="Keluar / Logout" class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition group">
+        <i data-lucide="log-out" class="w-4 h-4 text-rose-500 group-hover:text-rose-700 transition"></i>
+        <span>Keluar dari Sistem</span>
+      </a>
+        <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-[#dbe8fb]">
+          <div class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+            <i data-lucide="badge-check" class="w-3.5 h-3.5 text-teal-600"></i>
+            <span>v2.4.0 (Enterprise)</span>
+          </div>
+          <a href="#" class="text-[11px] font-bold text-[#0f2a71] hover:underline">Bantuan</a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ================= 2. MAIN CONTENT ================= -->
+    <div class="flex-1 min-w-0 flex flex-col">
+
+      <!-- Top Header Bar -->
+      <header
+        class="h-14 bg-white/95 backdrop-blur border-b border-slate-200/80 sticky top-0 z-30 px-6 flex items-center justify-between gap-4">
+        <!-- Breadcrumb & Search Bar -->
+        <div class="flex items-center gap-6 flex-1 max-w-2xl min-w-0">
+          <nav class="flex items-center text-xs font-medium text-slate-500 shrink-0">
+            <a href="index.html" class="hover:text-slate-800 transition">SIMAS</a>
+            <span class="mx-1.5 text-slate-400 font-normal">&gt;</span>
+            <span class="text-slate-900 font-bold">Workspace</span>
+          </nav>
+
+          <!-- Search Bar with Shortcut -->
+          <label class="relative flex-1 max-w-md">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input type="text" placeholder="Cari aset, tiket, ruangan, kode QR... (Ctrl + K)"
+              class="w-full h-8 rounded-lg bg-[#edf3fb] border border-transparent pl-9 pr-3 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:bg-white focus:border-blue-400 transition">
+          </label>
+        </div>
+
+        <!-- Action Buttons & User Profile -->
+        <div class="flex items-center gap-4 shrink-0">
+          <!-- Notification Bell with Red Indicator -->
+          <button id="btn-header-notif" class="relative text-slate-700 hover:text-slate-900 p-1.5 transition">
+            <i data-lucide="bell" class="w-[18px] h-[18px]"></i>
+            <span class="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-rose-600 ring-2 ring-white"></span>
+          </button>
+
+          <!-- User Profile Dropdown -->
+          <div id="btn-header-profile" class="flex items-center gap-2 select-none">
+          <img 
+            id="header-user-avatar"
+            src="../assets/avatar_bambang.jpg" 
+            onerror="this.src='https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=96&q=80'" 
+            alt="User Avatar" 
+            class="w-7 h-7 rounded-full object-cover ring-1 ring-slate-200"
+          >
+          <div class="text-left leading-tight hidden sm:block">
+            <div id="header-user-name" class="text-xs font-bold text-slate-900 truncate max-w-[150px]"></div>
+            <div id="header-user-role" class="text-[10px] font-medium text-slate-500 truncate"></div>
+          </div>
+        </div>
+        <script>
+          if (window.__SIMAS_USER__) {
+            var _un = document.getElementById('header-user-name');
+            var _ur = document.getElementById('header-user-role');
+            var _ua = document.getElementById('header-user-avatar');
+            if (_un) _un.textContent = window.__SIMAS_USER__.nama || window.__SIMAS_USER__.username || '';
+            if (_ur) _ur.textContent = window.__SIMAS_USER__.roleLabel || window.__SIMAS_USER__.role || '';
+            if (_ua && window.__SIMAS_USER__.avatar) _ua.src = window.__SIMAS_USER__.avatar;
+          }
+        </script>
+        <!-- Tombol Logout ke Halaman Login -->
+        <a href="login.html" title="Keluar / Logout" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition flex items-center gap-1">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </a>
+        </div>
+      </header>
+
+      <!-- Main Workspace Container -->
+      <main class="p-5 space-y-4 flex-1">
+
+        <!-- ================= PAGE TITLE ROW ================= -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <!-- Breadcrumb Tag -->
+            <div class="text-[10px] font-extrabold text-slate-600 tracking-wider mb-0.5">
+              SIMAS <span class="text-slate-400">&gt;</span> Transaksi &amp; Workflow <span
+                class="text-slate-400">&gt;</span> <span class="text-[#0f2a71] font-bold">Antrean Persetujuan</span>
+            </div>
+            <!-- Title -->
+            <h1 class="text-xl font-extrabold text-slate-900 tracking-tight leading-tight">
+              Antrean Persetujuan &amp; Otorisasi Sarpras
+            </h1>
+            <!-- Subtitle -->
+            <p class="text-[11px] text-slate-500 mt-0.5 max-w-2xl leading-relaxed">
+              Sentralisasi verifikasi dan persetujuan pengajuan peminjaman, permohonan mutasi aset, serta usulan
+              penghapusan (disposal) sarana institusi.
+            </p>
+          </div>
+
+          <!-- Right Header Action Buttons -->
+          <div class="flex items-center gap-2 shrink-0">
+            <!-- Unduh Rekap Button -->
+            <button id="btn-download-rekap"
+              class="bg-[#e0eefc] hover:bg-[#d0e5fb] text-[#16428c] border border-blue-200/80 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-2xs transition">
+              <i data-lucide="download" class="w-3.5 h-3.5 text-[#16428c]"></i>
+              <span>Unduh Rekap</span>
+            </button>
+
+            <!-- ! Kebutuhan Mendesak Button -->
+            <button id="btn-urgent-filter"
+              class="bg-[#fee2e2] hover:bg-[#fecaca] text-[#b91c1c] border border-rose-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-2xs transition">
+              <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-[#b91c1c]"></i>
+              <span>! Kebutuhan Mendesak</span>
+            </button>
+
+            <!-- Persetujuan Cepat (Bulk) Button -->
+            <button id="btn-bulk-approve"
+              class="bg-[#0f2a71] hover:bg-[#0a1e54] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 shadow-sm transition">
+              <i data-lucide="check-square" class="w-3.5 h-3.5 text-white"></i>
+              <span>Persetujuan Cepat (Bulk)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ================= TABS / FILTER ROW ================= -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+          <!-- Tab 1: Semua Menunggu (Active) -->
+          <button id="tab-semua"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0f2a71] text-white font-bold text-xs shadow-sm transition">
+            <span>Semua Menunggu</span>
+            <span class="px-1.5 py-0.2 rounded-full bg-[#091a48] text-white text-[10px] font-bold">8</span>
+          </button>
+
+          <!-- Tab 2: Peminjaman Aset & Ruang -->
+          <button id="tab-peminjaman"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-semibold text-xs transition">
+            <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-500"></i>
+            <span>Peminjaman Aset &amp; Ruang</span>
+            <span class="px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-700 text-[9px] font-bold">4</span>
+          </button>
+
+          <!-- Tab 3: Mutasi & Alih Lokasi -->
+          <button id="tab-mutasi"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-semibold text-xs transition">
+            <i data-lucide="arrow-left-right" class="w-3.5 h-3.5 text-slate-500"></i>
+            <span>Mutasi &amp; Alih Lokasi</span>
+            <span class="px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-700 text-[9px] font-bold">2</span>
+          </button>
+
+          <!-- Tab 4: Penghapusan / Disposal -->
+          <button id="tab-disposal"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-semibold text-xs transition">
+            <i data-lucide="archive" class="w-3.5 h-3.5 text-slate-500"></i>
+            <span>Penghapusan / Disposal</span>
+            <span class="px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-700 text-[9px] font-bold">2</span>
+          </button>
+
+          <!-- Tab 5: Riwayat Disetujui / Ditolak -->
+          <button id="tab-riwayat"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100/70 font-medium text-xs transition ml-auto">
+            <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-400"></i>
+            <span>Riwayat Disetujui / Ditolak</span>
+            <span class="text-[10px] text-slate-400">184</span>
+          </button>
+        </div>
+
+        <!-- ================= 2-COLUMN MAIN LAYOUT ================= -->
+        <div class="grid grid-cols-12 gap-4">
+
+          <!-- ================= LEFT COLUMN: QUEUE CARDS ================= -->
+          <div class="col-span-12 xl:col-span-5 lg:col-span-5 space-y-2.5">
+
+            <!-- Search Input -->
+            <div class="relative">
+              <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input id="search-approval-input" type="text" placeholder="Cari no. permohonan, pemohon, atau aset..."
+                class="w-full bg-[#f8fafc] border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-600 focus:bg-white transition">
+            </div>
+
+            <!-- Counter and Sort Bar -->
+            <div class="flex items-center justify-between text-[11px] text-slate-500 px-1">
+              <span>Menampilkan 4 dari 8 antrean aktif</span>
+              <div class="flex items-center gap-1 text-slate-600 font-semibold cursor-pointer hover:text-slate-900">
+                <i data-lucide="sliders-horizontal" class="w-3 h-3 text-slate-400"></i>
+                <span>Tenggat Waktu Terdekat</span>
+              </div>
+            </div>
+
+            <!-- Approval Cards List (Rendered dynamically by antrean.js) -->
+            <div id="approval-cards-list" class="space-y-2.5">
+              <!-- Cards rendered by JS -->
+            </div>
+
+          </div>
+
+          <!-- ================= RIGHT COLUMN: DETAIL PANEL ================= -->
+          <div
+            class="col-span-12 xl:col-span-7 lg:col-span-7 bg-white rounded-xl border border-slate-200/80 p-5 card-shadow space-y-4">
+
+            <!-- Detail Header -->
+            <div>
+              <div id="detail-id-tag" class="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                TINJAUAN BERKAS OTORISASI • #APV-2025-0142
+              </div>
+              <div class="flex items-start justify-between gap-3 mt-1">
+                <h2 id="detail-title" class="text-base font-black text-slate-900 leading-tight">
+                  Workshop Akreditasi Internasional ABET
+                </h2>
+
+                <!-- Header Badges -->
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <span
+                    class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#fee2e2] text-[#991b1b]">
+                    <i data-lucide="clock" class="w-3 h-3"></i>
+                    <span>Prioritas Mendesak</span>
+                  </span>
+                  <span
+                    class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#e0f2fe] text-[#0369a1]">
+                    <span>Menunggu Keputusan</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Requester Profile Box -->
+            <div class="p-3 rounded-xl border border-slate-200/70 bg-[#f8fafc] flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <img id="detail-req-avatar" src="../assets/avatar_hendro.jpg" alt="Dr. Ir. Hendro Wicaksono, M.T."
+                  class="w-12 h-12 rounded-full object-cover border border-slate-200 shrink-0">
+                <div>
+                  <div id="detail-req-name" class="text-xs font-black text-slate-900">
+                    Dr. Ir. Hendro Wicaksono, M.T.
+                  </div>
+                  <div id="detail-req-nip" class="text-[10px] text-slate-500 mt-0.5">
+                    NIP. 197804152003121002 • Ka. Prodi Teknik Informatika
+                  </div>
+                  <div class="flex items-center gap-3 text-[10px] text-slate-600 mt-1">
+                    <span class="flex items-center gap-1">
+                      <i data-lucide="phone" class="w-3 h-3 text-slate-400"></i>
+                      <span id="detail-req-phone">0812-3456-7890</span>
+                    </span>
+                    <span class="flex items-center gap-1">
+                      <i data-lucide="mail" class="w-3 h-3 text-slate-400"></i>
+                      <span id="detail-req-email">hendro@instansi.ac.id</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Surat Pengantar Dekan Box -->
+              <div class="text-right border-l border-slate-200 pl-4 shrink-0">
+                <div id="detail-doc-label" class="text-[9px] font-semibold text-slate-400">
+                  Surat Pengantar Dekan
+                </div>
+                <div id="detail-doc-number" class="text-[10px] font-black text-slate-800 mt-0.5">
+                  412/FT-TI/UND/2025
+                </div>
+                <a href="#"
+                  class="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 hover:underline mt-1">
+                  <span>Buka E-Dokumen</span>
+                  <i data-lucide="external-link" class="w-3 h-3"></i>
+                </a>
+              </div>
+            </div>
+
+            <!-- 3 Info / Schedule Cards Grid -->
+            <div class="grid grid-cols-3 gap-2.5">
+              <!-- Card 1 -->
+              <div class="p-2.5 rounded-xl border border-slate-200/70 bg-[#f8fafc]">
+                <div class="text-[9px] font-semibold text-slate-400">Tanggal Pelaksanaan</div>
+                <div id="detail-sched-date" class="text-xs font-black text-slate-900 mt-0.5">Sabtu, 29 Maret 2025</div>
+                <div id="detail-sched-badge" class="text-[10px] font-bold text-rose-600 mt-0.5">Besok (Kurang dari 24
+                  jam)</div>
+              </div>
+
+              <!-- Card 2 -->
+              <div class="p-2.5 rounded-xl border border-slate-200/70 bg-[#f8fafc]">
+                <div class="text-[9px] font-semibold text-slate-400">Durasi Operasional</div>
+                <div id="detail-sched-dur" class="text-xs font-black text-slate-900 mt-0.5">08:00 - 17:00 WIB</div>
+                <div id="detail-sched-dursub" class="text-[10px] font-bold text-blue-700 mt-0.5">Total: 9 Jam Penggunaan
+                </div>
+              </div>
+
+              <!-- Card 3 -->
+              <div class="p-2.5 rounded-xl border border-slate-200/70 bg-[#f8fafc]">
+                <div class="text-[9px] font-semibold text-slate-400">Status Bentrok Ruang</div>
+                <div class="flex items-center gap-1 text-xs font-black text-emerald-700 mt-0.5">
+                  <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-600"></i>
+                  <span>Jadwal Bersih</span>
+                </div>
+                <div class="text-[10px] font-semibold text-slate-500 mt-0.5">Tidak ada reservasi lain</div>
+              </div>
+            </div>
+
+            <!-- Section: Daftar Fasilitas & Inventaris Dimohon -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5">
+                  <i data-lucide="archive" class="w-4 h-4 text-slate-600"></i>
+                  <h3 class="text-xs font-black text-slate-900">
+                    Daftar Fasilitas &amp; Inventaris Dimohon (3 Item)
+                  </h3>
+                </div>
+                <span class="text-[10px] text-slate-400">Terverifikasi di database fisik</span>
+              </div>
+
+              <!-- Requested Items List -->
+              <div id="detail-items-container" class="space-y-2">
+                <!-- Rendered by JS -->
+              </div>
+            </div>
+
+            <!-- Section: Hasil Verifikasi Pra-Persetujuan -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5">
+                  <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i>
+                  <h3 class="text-xs font-black text-slate-900">
+                    Hasil Verifikasi Pra-Persetujuan (Sistem &amp; Tim Teknis)
+                  </h3>
+                </div>
+                <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-[#5eead4] text-[#0f766e]">
+                  4 / 4 Lolos Verifikasi
+                </span>
+              </div>
+
+              <!-- 2x2 Grid Verifications -->
+              <div id="detail-verifications-container" class="grid grid-cols-2 gap-2">
+                <!-- Rendered by JS -->
+              </div>
+            </div>
+
+            <!-- Section: Catatan Persetujuan (Opsional) -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between text-[10px]">
+                <label class="font-bold text-slate-700">Catatan Persetujuan / Ketentuan Tambahan (Opsional)</label>
+                <span class="text-slate-400">Tercetak otomatis pada Surat Izin</span>
+              </div>
+              <textarea rows="2"
+                placeholder="mis. Harap ruang dibersihkan kembali sebelum pukul 19:00 WIB dan kunci diserahkan ke Pos Satpam Timur..."
+                class="w-full text-xs border border-slate-200/80 rounded-xl p-2.5 bg-[#f8fafc] placeholder-slate-400 outline-none focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600"></textarea>
+            </div>
+
+            <!-- Action Buttons Row -->
+            <div class="flex items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
+              <div class="flex items-center gap-2">
+                <button id="btn-reject"
+                  class="px-3.5 py-2 rounded-xl border border-rose-200 text-rose-700 bg-white hover:bg-rose-50 text-xs font-bold flex items-center gap-1.5 transition">
+                  <i data-lucide="x-circle" class="w-3.5 h-3.5 text-rose-600"></i>
+                  <span>Tolak Permohonan</span>
+                </button>
+
+                <button id="btn-revision"
+                  class="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 text-xs font-bold flex items-center gap-1.5 transition">
+                  <i data-lucide="edit-3" class="w-3.5 h-3.5 text-slate-500"></i>
+                  <span>Minta Revisi</span>
+                </button>
+              </div>
+
+              <button id="btn-approve"
+                class="px-4 py-2 rounded-xl bg-[#0f2a71] hover:bg-[#091a48] text-white text-xs font-bold flex items-center gap-2 shadow-sm transition">
+                <i data-lucide="check-circle" class="w-4 h-4 text-white"></i>
+                <span>Setujui Permohonan (E-Sign &amp; Terbitkan Izin)</span>
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- ================= BOTTOM LOG BAR ================= -->
+        <div
+          class="bg-white border border-slate-200/80 rounded-xl px-4 py-2 flex items-center justify-between text-[11px] text-slate-500 card-shadow">
+          <div class="flex items-center gap-2">
+            <i data-lucide="file-text" class="w-4 h-4 text-teal-600"></i>
+            <span id="detail-log-text">Log: Draf diajukan 28 Mar 08:30 WIB • Diverifikasi Staf Sarpras (Ahmad Fauzi) 28
+              Mar 09:15 WIB</span>
+          </div>
+          <a href="#" class="font-bold text-blue-700 hover:underline flex items-center gap-0.5">
+            <span>Riwayat Lengkap</span>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+          </a>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- RBAC & Navigation Scripts -->
+  <script src="../js/auth.js"></script>
+  <script src="../js/rbac.js"></script>
+  <script src="../js/navigation.js"></script>
+  <script src="../js/api.js"></script>
+  <!-- Scripts -->
+  <script src="../js/antrean.js"></script>
+</body>
+
+</html>

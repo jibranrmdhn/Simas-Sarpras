@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <!-- Early User Session Sync (Mencegah Flash Role saat Load) -->
+  <script>
+    try {
+      window.__SIMAS_USER__ = JSON.parse(localStorage.getItem('simas_current_user') || 'null');
+    } catch (e) {
+      window.__SIMAS_USER__ = null;
+    }
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIMAS - Manajemen Pengguna &amp; Otorisasi Role (RBAC)</title>
+  <meta name="description" content="Kelola akun pengguna, penugasan role, dan hak akses sistem informasi sarana prasarana institusi.">
+
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            navy: { DEFAULT: '#0f2a71', dark: '#091a48', light: '#16428c' },
+            canvas: '#f4f7fb',
+            softblue: '#edf4fe',
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f4f7fb;
+      -webkit-font-smoothing: antialiased;
+    }
+    .card-shadow {
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+    }
+  </style>
+</head>
+<body class="bg-[#f4f7fb] text-slate-800 antialiased min-h-screen flex flex-col md:flex-row">
+
+  <!-- Mobile Sidebar Backdrop Overlay -->
+  <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 hidden md:hidden"></div>
+
+  <!-- ================= LEFT SIDEBAR ================= -->
+  <aside id="main-sidebar" class="w-60 shrink-0 bg-[#f0f5fc] border-r border-slate-200/80 flex flex-col fixed md:sticky top-0 h-screen z-40 -translate-x-full md:translate-x-0 transition-transform duration-300">
+    <!-- Brand / Logo Area -->
+    <div class="px-5 pt-5 pb-3">
+      <div class="flex items-center justify-between">
+        <a href="index.html" class="flex items-center gap-3">
+          <!-- Brand Cube Icon -->
+          <div class="w-9 h-9 rounded-xl bg-[#1342b8] flex items-center justify-center text-white shadow-sm shadow-blue-700/25">
+            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-[15px] font-extrabold tracking-tight text-[#0f2a71] leading-none">SIMAS</h1>
+            <p class="text-[10px] text-slate-500 font-medium mt-1">Sistem Sarana &amp; Prasarana</p>
+          </div>
+        </a>
+        <button onclick="toggleSidebar()" class="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Active Role Info Badge (Static Indicator) -->
+      <div id="role-badge" class="mt-3.5 w-full px-3 py-2.5 bg-[#dbe8fb] rounded-xl flex items-center justify-between text-left select-none">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <i data-lucide="shield-check" class="w-4 h-4 text-[#0f2a71] shrink-0"></i>
+          <div class="leading-tight truncate">
+            <span class="text-[10px] text-slate-600 font-semibold block">Peran Aktif</span>
+            <span id="sidebar-role-label" class="text-xs font-bold text-[#0f2a71] truncate block"></span>
+          </div>
+        </div>
+      </div>
+      <script>
+        if (window.__SIMAS_USER__) {
+          var _r = document.getElementById('sidebar-role-label');
+          if (_r) _r.textContent = window.__SIMAS_USER__.roleLabel || window.__SIMAS_USER__.role || '';
+        }
+      </script>
+    </div>
+
+    <!-- Navigation Menu Items -->
+    <nav class="px-3 mt-2 flex-1 overflow-y-auto">
+      <div class="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+        Menu Operasional
+      </div>
+      <div id="sidebar-menu-list" class="space-y-1">
+        <!-- Rendered dynamically by navigation.js -->
+      </div>
+    </nav>
+
+        <!-- Footer System Info -->
+    <div class="p-3 mt-auto space-y-1.5">
+      <!-- Tombol Logout Sidebar -->
+      <a href="login.html" title="Keluar / Logout" class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition group">
+        <i data-lucide="log-out" class="w-4 h-4 text-rose-500 group-hover:text-rose-700 transition"></i>
+        <span>Keluar dari Sistem</span>
+      </a>
+      <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-[#dbe8fb]">
+        <div class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+          <i data-lucide="badge-check" class="w-3.5 h-3.5 text-teal-600"></i>
+          <span>v2.4.0 (Enterprise)</span>
+        </div>
+        <a href="index.html" class="text-[11px] font-bold text-[#0f2a71] hover:underline">Dashboard</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN WRAPPER ================= -->
+  <div class="flex-1 flex flex-col min-w-0">
+
+    <!-- Top Header Bar -->
+    <header class="h-14 bg-white/95 backdrop-blur border-b border-slate-200/80 sticky top-0 z-30 px-6 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-4 flex-1 max-w-2xl min-w-0">
+        <button onclick="toggleSidebar()" class="md:hidden p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition shrink-0">
+          <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+
+        <nav class="flex items-center text-xs font-medium text-slate-500 shrink-0">
+          <a href="index.html" class="hover:text-slate-800 transition">SIMAS</a>
+          <span class="mx-1.5 text-slate-400 font-normal">&gt;</span>
+          <span class="text-slate-900 font-bold">Manajemen Pengguna &amp; RBAC</span>
+        </nav>
+      </div>
+
+      <div class="flex items-center gap-4 shrink-0">
+        <button onclick="openUserModal('add')" class="h-8 px-3.5 rounded-lg bg-[#0f2a71] hover:bg-[#0a1e54] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+          <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+          <span>Tambah Pengguna</span>
+        </button>
+
+        <!-- User Profile Dropdown -->
+        <div id="btn-header-profile" class="flex items-center gap-2 select-none">
+          <img 
+            id="header-user-avatar"
+            src="../assets/avatar_bambang.jpg" 
+            onerror="this.src='https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=96&q=80'" 
+            alt="User Avatar" 
+            class="w-7 h-7 rounded-full object-cover ring-1 ring-slate-200"
+          >
+          <div class="text-left leading-tight hidden sm:block">
+            <div id="header-user-name" class="text-xs font-bold text-slate-900 truncate max-w-[150px]"></div>
+            <div id="header-user-role" class="text-[10px] font-medium text-slate-500 truncate"></div>
+          </div>
+        </div>
+        <script>
+          if (window.__SIMAS_USER__) {
+            var _un = document.getElementById('header-user-name');
+            var _ur = document.getElementById('header-user-role');
+            var _ua = document.getElementById('header-user-avatar');
+            if (_un) _un.textContent = window.__SIMAS_USER__.nama || window.__SIMAS_USER__.username || '';
+            if (_ur) _ur.textContent = window.__SIMAS_USER__.roleLabel || window.__SIMAS_USER__.role || '';
+            if (_ua && window.__SIMAS_USER__.avatar) _ua.src = window.__SIMAS_USER__.avatar;
+          }
+        </script>
+
+        <a href="login.html" title="Keluar / Logout" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition flex items-center gap-1">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="p-6 space-y-6 flex-1 max-w-7xl w-full mx-auto">
+
+      <!-- ================= PAGE TITLE ROW ================= -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="px-2.5 py-0.5 rounded-full bg-blue-100 text-[#0f2a71] text-[10px] font-extrabold uppercase tracking-wider">
+              Khusus Administrator
+            </span>
+            <span class="text-xs text-slate-400 font-semibold">• Kontrol Akses Berbasis Peran (RBAC) &amp; ACC Pendaftaran</span>
+          </div>
+          <h1 class="text-2xl font-black text-slate-900 tracking-tight">Kelola Akun &amp; Persetujuan (ACC) Pendaftaran</h1>
+          <p class="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+            Hanya <strong>Admin Sarpras</strong> yang berwenang melakukan ACC atau penolakan pendaftaran akun baru, menentukan role (Admin, Petugas, Pimpinan, Peminjam), serta mengelola akun aktif.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2.5 shrink-0">
+          <button type="button" onclick="loadUsersTable()" class="h-8 px-3.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition" title="Muat ulang data akun dari server">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-slate-500"></i>
+            <span>Refresh Data</span>
+          </button>
+          <button type="button" onclick="openUserModal('add')" class="h-8 px-4 rounded-xl bg-[#0f2a71] hover:bg-[#0a1e54] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            <span>Tambah Akun Baru</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= ANTREAN ACC PENDAFTARAN AKUN BARU (KHUSUS ADMIN) ================= -->
+      <section id="pending-acc-section" class="bg-white rounded-2xl border border-amber-300/90 card-shadow overflow-hidden">
+        <div class="px-5 py-4 bg-amber-50/80 border-b border-amber-200/80 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+              <i data-lucide="user-check" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-sm font-extrabold text-amber-950">Antrean Persetujuan (ACC) Pendaftaran Akun Baru</h2>
+                <span id="pending-acc-count-pill" class="px-2.5 py-0.5 rounded-full bg-amber-600 text-white text-[10px] font-extrabold">0 Menunggu</span>
+              </div>
+              <p class="text-[11px] text-amber-800 font-medium mt-0.5">
+                Akun yang mendaftar melalui halaman login tidak dapat masuk ke sistem sebelum Anda klik <strong>ACC &amp; Aktifkan</strong>.
+              </p>
+            </div>
+          </div>
+          <span class="px-3 py-1 rounded-lg bg-white border border-amber-200 text-[11px] font-bold text-amber-900">
+            Otoritas Eksklusif: Admin Sarpras
+          </span>
+        </div>
+
+        <div id="pending-acc-list" class="p-4">
+          <div class="text-center py-6 text-xs text-slate-400">Memuat antrean pendaftaran akun...</div>
+        </div>
+      </section>
+
+      <!-- ================= 4 ROLE & STATUS STAT CARDS ================= -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="role-stat-cards">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- ================= TABLE FILTER & SEARCH ================= -->
+      <div class="bg-white p-4 rounded-xl border border-slate-200/90 card-shadow flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
+          <div class="relative flex-1 min-w-[220px]">
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input 
+              id="user-search-input" 
+              type="text" 
+              placeholder="Cari nama pengguna, username, NIP, unit, atau email..." 
+              class="w-full text-xs pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 transition"
+              oninput="filterUsersTable()"
+            >
+          </div>
+
+          <select id="user-status-filter" onchange="filterUsersTable()" class="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none bg-white font-semibold text-slate-700 cursor-pointer">
+            <option value="all">Semua Status Akun</option>
+            <option value="pending">Menunggu ACC Admin</option>
+            <option value="active">Aktif</option>
+            <option value="rejected">Ditolak</option>
+          </select>
+
+          <select id="user-role-filter" onchange="filterUsersTable()" class="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none bg-white font-semibold text-slate-700 cursor-pointer">
+            <option value="all">Semua Role Pengguna</option>
+            <option value="admin">Admin Sarpras</option>
+            <option value="petugas">Petugas Sarpras</option>
+            <option value="pimpinan">Pimpinan Institusi</option>
+            <option value="peminjam">Peminjam (Dosen/Tendik)</option>
+          </select>
+        </div>
+
+        <div class="text-xs text-slate-400 font-medium" id="user-count-badge">
+          Memuat data pengguna...
+        </div>
+      </div>
+
+      <!-- ================= USERS DATA TABLE ================= -->
+      <div class="bg-white rounded-2xl border border-slate-200/90 card-shadow overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs min-w-[960px]">
+            <thead class="bg-[#dce7f7]">
+              <tr class="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-700">
+                <th class="py-3.5 px-4">Pengguna</th>
+                <th class="py-3.5 px-4">Username &amp; NIP</th>
+                <th class="py-3.5 px-4">Role Pengguna</th>
+                <th class="py-3.5 px-4">Status Akun</th>
+                <th class="py-3.5 px-4">Unit Kerja</th>
+                <th class="py-3.5 px-4 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-body" class="divide-y divide-slate-100">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ================= MODAL TAMBAH / EDIT PENGGUNA ================= -->
+  <div id="modal-user-form" onclick="handleUserModalBackdrop(event)" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg p-6 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+            <i id="user-modal-icon" data-lucide="user-plus" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 id="user-modal-title" class="text-sm font-extrabold text-slate-900">Tambah Akun Pengguna</h3>
+            <p id="user-modal-subtitle" class="text-[11px] text-slate-500">Akun yang dibuat langsung oleh Admin berstatus Aktif</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeUserModal()" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form id="form-user" onsubmit="handleUserFormSubmit(event)" class="space-y-3.5" novalidate>
+        <input type="hidden" id="form-user-mode" value="add">
+        <input type="hidden" id="form-user-id" value="">
+        <input type="hidden" id="form-user-orig-username" value="">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">
+              Username <span class="text-rose-500">*</span>
+            </label>
+            <input 
+              type="text" 
+              id="user-input-username" 
+              placeholder="Contoh: rina.hartati" 
+              class="w-full text-xs font-mono font-bold border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition"
+              required
+            >
+            <p id="err-user-username" class="text-[10px] text-rose-600 font-semibold hidden mt-1"></p>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">
+              Kata Sandi <span id="password-req-mark" class="text-rose-500">*</span>
+            </label>
+            <input 
+              type="password" 
+              id="user-input-password" 
+              placeholder="Minimal 6 karakter" 
+              class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition"
+              required
+            >
+            <p id="err-user-password" class="text-[10px] text-rose-600 font-semibold hidden mt-1"></p>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-700 mb-1">
+            Nama Lengkap &amp; Gelar <span class="text-rose-500">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="user-input-nama" 
+            placeholder="Contoh: Rina Hartati, S.T., M.Kom" 
+            class="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition"
+            required
+          >
+          <p id="err-user-nama" class="text-[10px] text-rose-600 font-semibold hidden mt-1"></p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">
+              NIP / No. Identitas Pegawai
+            </label>
+            <input 
+              type="text" 
+              id="user-input-nip" 
+              placeholder="Contoh: 198904122014022001" 
+              class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition"
+            >
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">
+              Email Institusi
+            </label>
+            <input 
+              type="email" 
+              id="user-input-email" 
+              placeholder="Contoh: rina@institusi.ac.id" 
+              class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition"
+            >
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">
+              Role Pengguna (RBAC) <span class="text-rose-500">*</span>
+            </label>
+            <select 
+              id="user-input-role" 
+              class="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-2 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white cursor-pointer font-bold"
+              required
+            >
+              <option value="admin">Admin Sarpras (Akses Penuh)</option>
+              <option value="petugas">Petugas Sarpras (Operasional &amp; Servis)</option>
+              <option value="pimpinan">Pimpinan Institusi (Approval &amp; Laporan)</option>
+              <option value="peminjam">Peminjam (Katalog &amp; Permohonan)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">
+              Unit Kerja / Fakultas
+            </label>
+            <input 
+              type="text" 
+              id="user-input-unit" 
+              placeholder="Contoh: Biro Akademik & Kemahasiswaan" 
+              class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition"
+            >
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+          <button 
+            type="button" 
+            onclick="closeUserModal()" 
+            class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
+          >
+            Batal
+          </button>
+          <button 
+            type="submit" 
+            class="px-4 py-2 rounded-xl bg-[#0f2a71] hover:bg-[#0a1e54] text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5"
+          >
+            <i data-lucide="save" class="w-3.5 h-3.5"></i>
+            <span id="btn-user-submit-label">Simpan Pengguna</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= MODAL TOLAK PENDAFTARAN AKUN ================= -->
+  <div id="modal-reject-user" onclick="handleRejectModalBackdrop(event)" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center">
+            <i data-lucide="user-x" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-extrabold text-slate-900">Tolak Pendaftaran Akun</h3>
+            <p id="reject-modal-target" class="text-[11px] text-slate-500">Pemohon akan diblokir untuk login</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeRejectUserModal()" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form onsubmit="confirmRejectUser(event)" class="space-y-3.5">
+        <input type="hidden" id="reject-user-id" value="">
+        <div>
+          <label for="reject-reason-input" class="block text-[11px] font-bold text-slate-700 mb-1">
+            Alasan Penolakan <span class="text-rose-500">*</span>
+          </label>
+          <textarea
+            id="reject-reason-input"
+            rows="3"
+            placeholder="Contoh: NIP / Email tidak sesuai dengan data kepegawaian institusi."
+            class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+            required
+          ></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeRejectUserModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+            Batal
+          </button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition">
+            Tolak Pendaftaran
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= MODAL KONFIRMASI HAPUS AKUN ================= -->
+  <div id="modal-delete-user" onclick="handleDeleteModalBackdrop(event)" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-sm p-6 space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+          <i data-lucide="trash-2" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h3 class="text-sm font-extrabold text-slate-900">Hapus Akun Pengguna?</h3>
+          <p id="delete-modal-desc" class="text-[11px] text-slate-500 mt-0.5">Tindakan ini akan menghapus akun secara permanen dari database.</p>
+        </div>
+      </div>
+
+      <input type="hidden" id="delete-user-id" value="">
+      <input type="hidden" id="delete-user-username" value="">
+
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+        <button type="button" onclick="closeDeleteUserModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+          Batal
+        </button>
+        <button type="button" onclick="confirmDeleteUser()" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition">
+          Ya, Hapus Akun
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- RBAC & Navigation Scripts -->
+  <script src="../js/auth.js"></script>
+  <script src="../js/rbac.js"></script>
+  <script src="../js/navigation.js"></script>
+  <script src="../js/api.js"></script>
+
+  <script>
+    let usersList = [];
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function normalizeUserRecord(u) {
+      const roleLabels = {
+        admin: 'Admin Sarpras',
+        petugas: 'Petugas Sarpras',
+        pimpinan: 'Pimpinan Institusi',
+        peminjam: 'Peminjam'
+      };
+      return {
+        id: u.id,
+        username: u.username,
+        nama: u.nama,
+        nip: u.nip || '-',
+        email: u.email || '-',
+        unit: u.unit || '-',
+        account_type: u.account_type || '',
+        role: u.role || 'peminjam',
+        roleLabel: u.role_label || u.roleLabel || roleLabels[u.role] || u.role,
+        status: u.status || 'active',
+        rejection_reason: u.rejection_reason || '',
+        approved_by: u.approved_by || '',
+        approved_at: u.approved_at || '',
+        created_at: u.created_at || '',
+        avatar: u.avatar || '../assets/avatar_bambang.jpg'
+      };
+    }
+
+    async function loadUsersTable() {
+      try {
+        const res = await API.getUsers();
+        if (res && res.success && Array.isArray(res.data)) {
+          usersList = res.data.map(normalizeUserRecord);
+        } else {
+          usersList = getUsers().map(normalizeUserRecord);
+        }
+      } catch (err) {
+        console.warn('Fallback ke data lokal:', err.message);
+        usersList = getUsers().map(normalizeUserRecord);
+      }
+
+      renderPendingQueue();
+      renderStats();
+      filterUsersTable();
+      if (typeof window.refreshPendingUsersBadge === 'function') {
+        window.refreshPendingUsersBadge();
+      }
+    }
+
+    function renderPendingQueue() {
+      const listEl = document.getElementById('pending-acc-list');
+      const pillEl = document.getElementById('pending-acc-count-pill');
+      if (!listEl) return;
+
+      const pendingUsers = usersList.filter(u => u.status === 'pending');
+
+      if (pillEl) {
+        pillEl.textContent = `${pendingUsers.length} Menunggu`;
+        if (pendingUsers.length === 0) {
+          pillEl.className = 'px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-extrabold';
+        } else {
+          pillEl.className = 'px-2.5 py-0.5 rounded-full bg-amber-600 text-white text-[10px] font-extrabold';
+        }
+      }
+
+      if (pendingUsers.length === 0) {
+        listEl.innerHTML = `
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-3 py-6 text-center sm:text-left">
+            <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <p class="text-xs font-extrabold text-slate-800">Tidak ada pendaftaran akun baru yang menunggu ACC.</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">Semua pengajuan pendaftaran akun telah diverifikasi oleh Admin Sarpras.</p>
+            </div>
+          </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+
+      listEl.innerHTML = `
+        <div class="space-y-3">
+          ${pendingUsers.map(u => {
+            const safeNamaAttr = escapeHtml(u.nama);
+            const isMhs = String(u.account_type || '').toLowerCase() === 'mahasiswa';
+            const isDosen = String(u.account_type || '').toLowerCase() === 'dosen';
+            const idLabel = isMhs ? 'NIM' : (isDosen ? 'NIP' : 'NIP/NIM');
+            const typeBadge = isMhs
+              ? '<span class="px-2 py-0.5 rounded-md bg-blue-50 text-[#0f2a71] text-[10px] font-extrabold">Mahasiswa (Peminjam)</span>'
+              : (isDosen
+                ? '<span class="px-2 py-0.5 rounded-md bg-purple-50 text-purple-800 text-[10px] font-extrabold">Dosen (Peminjam)</span>'
+                : '<span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-extrabold">Peminjam</span>');
+            return `
+              <div class="p-4 rounded-xl bg-[#fffdf7] border border-amber-200/90 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div class="space-y-1 min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-extrabold text-slate-900">${escapeHtml(u.nama)}</span>
+                    ${typeBadge}
+                    <span class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 text-[10px] font-extrabold">Menunggu ACC Admin</span>
+                    <span class="font-mono text-[11px] font-bold text-[#0f2a71]">@${escapeHtml(u.username)}</span>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-600">
+                    <span><strong>Email:</strong> ${escapeHtml(u.email)}</span>
+                    <span><strong>${idLabel}:</strong> ${escapeHtml(u.nip)}</span>
+                    <span><strong>Unit / Prodi:</strong> ${escapeHtml(u.unit)}</span>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 shrink-0">
+                  <label class="sr-only" for="pending-role-${u.id}">Role ACC untuk ${safeNamaAttr}</label>
+                  <select id="pending-role-${u.id}" class="text-xs font-bold border border-slate-300 rounded-lg px-2.5 py-2 bg-white text-slate-800 outline-none focus:border-blue-600 cursor-pointer">
+                    <option value="peminjam" ${u.role === 'peminjam' ? 'selected' : ''}>Role: Peminjam</option>
+                    <option value="petugas" ${u.role === 'petugas' ? 'selected' : ''}>Role: Petugas Sarpras</option>
+                    <option value="pimpinan" ${u.role === 'pimpinan' ? 'selected' : ''}>Role: Pimpinan Institusi</option>
+                    <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Role: Admin Sarpras</option>
+                  </select>
+                  <button
+                    type="button"
+                    onclick="approvePendingUser(${u.id})"
+                    class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                  >
+                    <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+                    <span>ACC &amp; Aktifkan</span>
+                  </button>
+                  <button
+                    type="button"
+                    onclick="openRejectUserModal(${u.id})"
+                    class="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <i data-lucide="x-circle" class="w-3.5 h-3.5"></i>
+                    <span>Tolak</span>
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    async function approvePendingUser(userId) {
+      const currentUser = getCurrentUser();
+      if (!currentUser || currentUser.role !== 'admin') {
+        showToast('Akses ditolak: Hanya Admin Sarpras yang dapat melakukan ACC pendaftaran akun.', 'error');
+        return;
+      }
+
+      const roleSelect = document.getElementById(`pending-role-${userId}`);
+      const selectedRole = roleSelect ? roleSelect.value : undefined;
+      const targetUser = usersList.find(u => Number(u.id) === Number(userId));
+
+      const res = await API.approveUser(userId, {
+        role: selectedRole || (targetUser ? targetUser.role : 'peminjam'),
+        approved_by: currentUser.nama || 'Admin Sarpras'
+      });
+
+      if (res && res.success) {
+        showToast(res.message || `Akun "${targetUser ? targetUser.nama : userId}" berhasil di-ACC dan diaktifkan.`, 'success');
+        await loadUsersTable();
+      } else {
+        showToast((res && res.message) || 'Gagal melakukan ACC akun.', 'error');
+      }
+    }
+
+    function openRejectUserModal(userId) {
+      const targetUser = usersList.find(u => Number(u.id) === Number(userId));
+      document.getElementById('reject-user-id').value = userId;
+      document.getElementById('reject-reason-input').value = '';
+      document.getElementById('reject-modal-target').textContent = targetUser
+        ? `Menolak pendaftaran akun: ${targetUser.nama} (@${targetUser.username})`
+        : 'Pemohon akan diblokir untuk login';
+
+      const modal = document.getElementById('modal-reject-user');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function closeRejectUserModal() {
+      const modal = document.getElementById('modal-reject-user');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function handleRejectModalBackdrop(e) {
+      if (e.target && e.target.id === 'modal-reject-user') {
+        closeRejectUserModal();
+      }
+    }
+
+    async function confirmRejectUser(e) {
+      e.preventDefault();
+      const currentUser = getCurrentUser();
+      if (!currentUser || currentUser.role !== 'admin') {
+        showToast('Akses ditolak: Hanya Admin Sarpras yang dapat menolak pendaftaran akun.', 'error');
+        return;
+      }
+
+      const userId = document.getElementById('reject-user-id').value;
+      const reason = document.getElementById('reject-reason-input').value.trim() || 'Pendaftaran belum memenuhi verifikasi Admin.';
+
+      const res = await API.rejectUser(userId, {
+        reason,
+        rejected_by: currentUser.nama || 'Admin Sarpras'
+      });
+
+      if (res && res.success) {
+        showToast(res.message || 'Pendaftaran akun berhasil ditolak.', 'info');
+        closeRejectUserModal();
+        await loadUsersTable();
+      } else {
+        showToast((res && res.message) || 'Gagal menolak pendaftaran akun.', 'error');
+      }
+    }
+
+    function renderStats() {
+      const statsContainer = document.getElementById('role-stat-cards');
+      if (!statsContainer) return;
+
+      const total = usersList.length;
+      const countPending = usersList.filter(u => u.status === 'pending').length;
+      const countActive = usersList.filter(u => u.status === 'active').length;
+      const countRejected = usersList.filter(u => u.status === 'rejected').length;
+      const countAdmin = usersList.filter(u => u.role === 'admin' && u.status === 'active').length;
+      const countPetugas = usersList.filter(u => u.role === 'petugas' && u.status === 'active').length;
+      const countPimpinan = usersList.filter(u => u.role === 'pimpinan' && u.status === 'active').length;
+
+      statsContainer.innerHTML = `
+        <div class="bg-white p-4 rounded-xl border border-slate-200/90 card-shadow">
+          <div class="flex items-start justify-between">
+            <span class="text-xs font-semibold text-slate-500">Total Akun Terdaftar</span>
+            <div class="w-7 h-7 rounded-lg bg-blue-50 text-[#0f2a71] flex items-center justify-center font-bold">
+              <i data-lucide="users" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-2">
+            <div class="text-2xl font-black text-slate-900">${total} Akun</div>
+            <div class="text-[11px] text-slate-500 font-medium mt-0.5">Tersinkron ke Database SQLite</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-amber-200 card-shadow">
+          <div class="flex items-start justify-between">
+            <span class="text-xs font-semibold text-slate-500">Menunggu ACC Admin</span>
+            <div class="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
+              <i data-lucide="clock" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-2">
+            <div class="text-2xl font-black text-amber-700">${countPending}</div>
+            <div class="text-[11px] text-amber-700 font-semibold mt-0.5">${countPending > 0 ? 'Perlu verifikasi segera' : 'Antrean bersih'}</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-emerald-200 card-shadow">
+          <div class="flex items-start justify-between">
+            <span class="text-xs font-semibold text-slate-500">Akun Aktif (Di-ACC)</span>
+            <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+              <i data-lucide="shield-check" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-2">
+            <div class="text-2xl font-black text-emerald-800">${countActive}</div>
+            <div class="text-[11px] text-emerald-700 font-semibold mt-0.5">${countAdmin} Admin · ${countPetugas} Petugas · ${countPimpinan} Pimpinan</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200/90 card-shadow">
+          <div class="flex items-start justify-between">
+            <span class="text-xs font-semibold text-slate-500">Pendaftaran Ditolak</span>
+            <div class="w-7 h-7 rounded-lg bg-rose-50 text-rose-700 flex items-center justify-center font-bold">
+              <i data-lucide="user-x" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-2">
+            <div class="text-2xl font-black text-rose-700">${countRejected}</div>
+            <div class="text-[11px] text-slate-500 font-semibold mt-0.5">Diblokir dari akses login</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function filterUsersTable() {
+      const search = (document.getElementById('user-search-input')?.value || '').toLowerCase().trim();
+      const roleFilter = document.getElementById('user-role-filter')?.value || 'all';
+      const statusFilter = document.getElementById('user-status-filter')?.value || 'all';
+
+      const filtered = usersList.filter(u => {
+        const matchSearch = !search || 
+          (u.nama && u.nama.toLowerCase().includes(search)) || 
+          (u.username && u.username.toLowerCase().includes(search)) || 
+          (u.nip && u.nip.toLowerCase().includes(search)) || 
+          (u.email && u.email.toLowerCase().includes(search)) ||
+          (u.unit && u.unit.toLowerCase().includes(search));
+
+        const matchRole = roleFilter === 'all' || u.role === roleFilter;
+        const matchStatus = statusFilter === 'all' || u.status === statusFilter;
+        return matchSearch && matchRole && matchStatus;
+      });
+
+      renderTableRows(filtered);
+    }
+
+    function renderTableRows(users) {
+      const tbody = document.getElementById('users-table-body');
+      const countBadge = document.getElementById('user-count-badge');
+      if (!tbody) return;
+
+      if (countBadge) {
+        countBadge.textContent = `Menampilkan ${users.length} dari ${usersList.length} akun`;
+      }
+
+      if (users.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-8 text-center text-slate-400 text-xs">
+              Tidak ada akun pengguna yang sesuai dengan pencarian atau filter.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      const currentUser = getCurrentUser();
+
+      tbody.innerHTML = users.map(u => {
+        const isCurrent = currentUser && currentUser.username.toLowerCase() === u.username.toLowerCase();
+        
+        let roleBadge = 'bg-slate-100 text-slate-700 border-slate-200';
+        if (u.role === 'admin') {
+          roleBadge = 'bg-blue-50 text-[#0f2a71] border-blue-200 font-bold';
+        } else if (u.role === 'petugas') {
+          roleBadge = 'bg-teal-50 text-teal-800 border-teal-200 font-bold';
+        } else if (u.role === 'pimpinan') {
+          roleBadge = 'bg-purple-50 text-purple-800 border-purple-200 font-bold';
+        } else if (u.role === 'peminjam') {
+          roleBadge = 'bg-amber-50 text-amber-900 border-amber-200 font-bold';
+        }
+
+        let statusHtml = '<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Aktif</span>';
+        if (u.status === 'pending') {
+          statusHtml = '<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">Menunggu ACC</span>';
+        } else if (u.status === 'rejected') {
+          statusHtml = `
+            <div>
+              <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">Ditolak</span>
+              ${u.rejection_reason ? `<div class="text-[10px] text-rose-600 mt-1 max-w-[170px] truncate" title="${escapeHtml(u.rejection_reason)}">${escapeHtml(u.rejection_reason)}</div>` : ''}
+            </div>
+          `;
+        }
+
+        return `
+          <tr class="hover:bg-slate-50/70 transition ${u.status === 'pending' ? 'bg-amber-50/30' : ''}">
+            <td class="py-3 px-4">
+              <div class="flex items-center gap-3">
+                <img src="${escapeHtml(u.avatar)}" alt="${escapeHtml(u.nama)}" class="w-9 h-9 rounded-full object-cover border border-slate-200">
+                <div>
+                  <div class="font-bold text-slate-900 flex items-center gap-1.5">
+                    <span>${escapeHtml(u.nama)}</span>
+                    ${isCurrent ? '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">Anda</span>' : ''}
+                  </div>
+                  <div class="text-[11px] text-slate-400">${escapeHtml(u.email)}</div>
+                </div>
+              </div>
+            </td>
+            <td class="py-3 px-4 whitespace-nowrap">
+              <div class="font-mono font-bold text-blue-700">${escapeHtml(u.username)}</div>
+              <div class="text-[11px] text-slate-500">${escapeHtml(u.nip)}</div>
+            </td>
+            <td class="py-3 px-4 whitespace-nowrap">
+              <span class="px-2.5 py-1 rounded-full text-[10px] border ${roleBadge}">${escapeHtml(u.roleLabel)}</span>
+            </td>
+            <td class="py-3 px-4 whitespace-nowrap">
+              ${statusHtml}
+            </td>
+            <td class="py-3 px-4">
+              <span class="text-slate-700 font-medium">${escapeHtml(u.unit)}</span>
+            </td>
+            <td class="py-3 px-4 text-right whitespace-nowrap">
+              <div class="flex items-center justify-end gap-1.5">
+                ${u.status !== 'active' ? `
+                  <button type="button" onclick="approvePendingUser(${u.id})" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold flex items-center gap-1 transition cursor-pointer" title="ACC &amp; Aktifkan Akun">
+                    <i data-lucide="check" class="w-3 h-3"></i>
+                    <span>ACC</span>
+                  </button>
+                ` : ''}
+                ${u.status === 'pending' ? `
+                  <button type="button" onclick="openRejectUserModal(${u.id})" class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer" title="Tolak Pendaftaran">
+                    <i data-lucide="x" class="w-3 h-3"></i>
+                    <span>Tolak</span>
+                  </button>
+                ` : ''}
+                <button type="button" onclick="openUserModal('edit', '${escapeHtml(u.username)}')" class="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer" title="Edit Akun">
+                  <i data-lucide="edit-2" class="w-3 h-3"></i>
+                  <span>Edit</span>
+                </button>
+                <button type="button" onclick="openDeleteUserModal(${u.id}, '${escapeHtml(u.username)}')" ${isCurrent ? 'disabled' : ''} class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-[11px] font-bold flex items-center gap-1 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer" title="${isCurrent ? 'Tidak dapat menghapus akun Anda sendiri' : 'Hapus Akun'}">
+                  <i data-lucide="trash-2" class="w-3 h-3"></i>
+                  <span>Hapus</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    // Modal Form Tambah / Edit
+    function openUserModal(mode, username = null) {
+      document.getElementById('form-user-mode').value = mode;
+      document.getElementById('form-user-orig-username').value = username || '';
+
+      const errFields = ['username', 'password', 'nama'];
+      errFields.forEach(f => {
+        document.getElementById(`err-user-${f}`).classList.add('hidden');
+      });
+
+      if (mode === 'add') {
+        document.getElementById('form-user-id').value = '';
+        document.getElementById('user-modal-title').textContent = 'Tambah Akun Pengguna Baru';
+        document.getElementById('user-modal-subtitle').textContent = 'Akun yang dibuat langsung oleh Admin otomatis berstatus Aktif';
+        document.getElementById('btn-user-submit-label').textContent = 'Simpan Pengguna Baru';
+        document.getElementById('password-req-mark').classList.remove('hidden');
+        document.getElementById('user-input-username').disabled = false;
+        document.getElementById('user-input-username').value = '';
+        document.getElementById('user-input-password').value = '';
+        document.getElementById('user-input-password').placeholder = 'Minimal 6 karakter';
+        document.getElementById('user-input-nama').value = '';
+        document.getElementById('user-input-nip').value = '';
+        document.getElementById('user-input-email').value = '';
+        document.getElementById('user-input-role').value = 'peminjam';
+        document.getElementById('user-input-unit').value = '';
+      } else {
+        const user = usersList.find(u => u.username.toLowerCase() === String(username).toLowerCase());
+        if (!user) return;
+
+        document.getElementById('form-user-id').value = user.id || '';
+        document.getElementById('user-modal-title').textContent = 'Edit Akun Pengguna';
+        document.getElementById('user-modal-subtitle').textContent = `Memperbarui role & informasi akun ${user.username}`;
+        document.getElementById('btn-user-submit-label').textContent = 'Perbarui Data Pengguna';
+        document.getElementById('password-req-mark').classList.add('hidden');
+        document.getElementById('user-input-username').disabled = true;
+        document.getElementById('user-input-username').value = user.username;
+        document.getElementById('user-input-password').value = '';
+        document.getElementById('user-input-password').placeholder = 'Kosongkan jika tidak mengubah sandi';
+        document.getElementById('user-input-nama').value = user.nama || '';
+        document.getElementById('user-input-nip').value = user.nip === '-' ? '' : (user.nip || '');
+        document.getElementById('user-input-email').value = user.email === '-' ? '' : (user.email || '');
+        document.getElementById('user-input-role').value = user.role || 'peminjam';
+        document.getElementById('user-input-unit').value = user.unit === '-' ? '' : (user.unit || '');
+      }
+
+      const modal = document.getElementById('modal-user-form');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function closeUserModal() {
+      const modal = document.getElementById('modal-user-form');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function handleUserModalBackdrop(e) {
+      if (e.target && e.target.id === 'modal-user-form') {
+        closeUserModal();
+      }
+    }
+
+    async function handleUserFormSubmit(e) {
+      e.preventDefault();
+
+      const mode = document.getElementById('form-user-mode').value;
+      const userId = document.getElementById('form-user-id').value;
+      const username = document.getElementById('user-input-username').value.trim();
+      const password = document.getElementById('user-input-password').value.trim();
+      const nama = document.getElementById('user-input-nama').value.trim();
+      const nip = document.getElementById('user-input-nip').value.trim();
+      const email = document.getElementById('user-input-email').value.trim();
+      const role = document.getElementById('user-input-role').value;
+      const unit = document.getElementById('user-input-unit').value.trim();
+
+      const errFields = ['username', 'password', 'nama'];
+      errFields.forEach(f => document.getElementById(`err-user-${f}`).classList.add('hidden'));
+
+      let hasError = false;
+      if (!username) {
+        document.getElementById('err-user-username').textContent = 'Username wajib diisi.';
+        document.getElementById('err-user-username').classList.remove('hidden');
+        hasError = true;
+      }
+      if (mode === 'add' && (!password || password.length < 6)) {
+        document.getElementById('err-user-password').textContent = 'Password minimal 6 karakter.';
+        document.getElementById('err-user-password').classList.remove('hidden');
+        hasError = true;
+      }
+      if (mode === 'edit' && password && password.length < 6) {
+        document.getElementById('err-user-password').textContent = 'Password baru minimal 6 karakter.';
+        document.getElementById('err-user-password').classList.remove('hidden');
+        hasError = true;
+      }
+      if (!nama) {
+        document.getElementById('err-user-nama').textContent = 'Nama lengkap wajib diisi.';
+        document.getElementById('err-user-nama').classList.remove('hidden');
+        hasError = true;
+      }
+      if (hasError) return;
+
+      const roleLabelMap = {
+        admin: 'Admin Sarpras',
+        petugas: 'Petugas Sarpras',
+        pimpinan: 'Pimpinan Institusi',
+        peminjam: 'Peminjam'
+      };
+
+      if (mode === 'add') {
+        const res = await API.createUser({
+          username,
+          password,
+          nama,
+          nip: nip || '-',
+          email: email || `${username}@institusi.ac.id`,
+          unit: unit || '-',
+          role,
+          role_label: roleLabelMap[role] || role,
+          status: 'active'
+        });
+        if (!res || !res.success) {
+          showToast((res && res.message) || 'Gagal menambah pengguna baru.', 'error');
+          return;
+        }
+        showToast(res.message || 'Pengguna baru berhasil ditambahkan dengan status Aktif.', 'success');
+      } else {
+        const payload = {
+          nama,
+          nip: nip || '-',
+          email: email || '-',
+          unit: unit || '-',
+          role,
+          role_label: roleLabelMap[role] || role
+        };
+        if (password) payload.password = password;
+
+        const res = await API.updateUser(userId, payload);
+        if (!res || !res.success) {
+          showToast((res && res.message) || 'Gagal memperbarui data pengguna.', 'error');
+          return;
+        }
+        showToast(res.message || 'Data pengguna berhasil diperbarui.', 'success');
+      }
+
+      closeUserModal();
+      await loadUsersTable();
+    }
+
+    function openDeleteUserModal(userId, username) {
+      document.getElementById('delete-user-id').value = userId;
+      document.getElementById('delete-user-username').value = username;
+      document.getElementById('delete-modal-desc').textContent = `Apakah Anda yakin ingin menghapus akun "@${username}" secara permanen dari database?`;
+      const modal = document.getElementById('modal-delete-user');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function closeDeleteUserModal() {
+      const modal = document.getElementById('modal-delete-user');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function handleDeleteModalBackdrop(e) {
+      if (e.target && e.target.id === 'modal-delete-user') {
+        closeDeleteUserModal();
+      }
+    }
+
+    async function confirmDeleteUser() {
+      const userId = document.getElementById('delete-user-id').value;
+      const username = document.getElementById('delete-user-username').value;
+      const res = await API.deleteUser(userId);
+      if (res && res.success) {
+        showToast(res.message || `Akun "@${username}" berhasil dihapus.`, 'success');
+        closeDeleteUserModal();
+        await loadUsersTable();
+      } else {
+        showToast((res && res.message) || 'Gagal menghapus akun pengguna.', 'error');
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      const bg = type === 'success' ? 'bg-emerald-600' : (type === 'error' ? 'bg-rose-600' : 'bg-slate-900');
+      toast.className = `${bg} text-white px-4 py-3 rounded-xl shadow-xl text-xs font-semibold flex items-center gap-2 pointer-events-auto transition`;
+      toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3800);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadUsersTable();
+    });
+  </script>
+</body>
+</html>
+

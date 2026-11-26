@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <!-- Early User Session Sync (Mencegah Flash Role saat Load) -->
+  <script>
+    try {
+      window.__SIMAS_USER__ = JSON.parse(localStorage.getItem('simas_current_user') || 'null');
+    } catch (e) {
+      window.__SIMAS_USER__ = null;
+    }
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIMAS - Pemeliharaan & Tiket Perbaikan</title>
+  <meta name="description" content="Monitoring penanganan kerusakan sarpras, tiket kerja teknisi, dan jadwal preventif berkala kampus dan fasilitas umum secara terintegrasi.">
+
+  <!-- Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            navy: {
+              DEFAULT: '#102f86',
+              dark: '#0c2368',
+              light: '#1e44b8'
+            },
+            canvas: '#f3f6fb',
+            card: '#ffffff',
+            softblue: '#edf4fe',
+          }
+        }
+      }
+    };
+  </script>
+
+  <link rel="stylesheet" href="../css/tiket.css">
+</head>
+<body class="bg-[#f3f6fb] text-slate-800 antialiased min-h-screen">
+
+<div class="flex min-h-screen w-full relative">
+
+  <!-- ================= 1. LEFT SIDEBAR ================= -->
+  <!-- Mobile Sidebar Backdrop Overlay -->
+  <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 hidden md:hidden"></div>
+
+  <aside id="main-sidebar" class="w-60 shrink-0 bg-[#f0f5fc] border-r border-slate-200/80 flex flex-col fixed md:sticky top-0 h-screen z-40 -translate-x-full md:translate-x-0 transition-transform duration-300">
+    <!-- Brand / Logo Area -->
+    <div class="px-5 pt-5 pb-3">
+      <div class="flex items-center justify-between">
+        <a href="index.html" class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-[#1342b8] flex items-center justify-center text-white shadow-sm shadow-blue-700/25">
+            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-[15px] font-extrabold tracking-tight text-[#0f2a71] leading-none">SIMAS</h1>
+            <p class="text-[10px] text-slate-500 font-medium mt-1">Sistem Sarana &amp; Prasarana</p>
+          </div>
+        </a>
+        <button onclick="toggleSidebar()" class="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Active Role Info Badge -->
+      <div id="role-badge" class="mt-3.5 w-full px-3 py-2.5 bg-[#dbe8fb] rounded-xl flex items-center justify-between text-left select-none">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <i data-lucide="shield-check" class="w-4 h-4 text-[#0f2a71] shrink-0"></i>
+          <div class="leading-tight truncate">
+            <span class="text-[10px] text-slate-600 font-semibold block">Peran Aktif</span>
+            <span id="sidebar-role-label" class="text-xs font-bold text-[#0f2a71] truncate block"></span>
+          </div>
+        </div>
+      </div>
+      <script>
+        if (window.__SIMAS_USER__) {
+          var _r = document.getElementById('sidebar-role-label');
+          if (_r) _r.textContent = window.__SIMAS_USER__.roleLabel || window.__SIMAS_USER__.role || '';
+        }
+      </script>
+    </div>
+
+    <!-- Navigation Menu Items -->
+    <nav class="px-3 mt-2 flex-1 overflow-y-auto">
+      <div class="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+        Menu Operasional
+      </div>
+      <div id="sidebar-menu-list" class="space-y-1">
+        <!-- Rendered dynamically by navigation.js -->
+      </div>
+    </nav>
+
+    <!-- Footer System Info -->
+    <div class="p-3 mt-auto space-y-1.5">
+      <a href="login.html" title="Keluar / Logout" class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition group">
+        <i data-lucide="log-out" class="w-4 h-4 text-rose-500 group-hover:text-rose-700 transition"></i>
+        <span>Keluar dari Sistem</span>
+      </a>
+      <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-[#dbe8fb]">
+        <div class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+          <i data-lucide="badge-check" class="w-3.5 h-3.5 text-teal-600"></i>
+          <span>v2.4.0 (Enterprise)</span>
+        </div>
+        <a href="#" class="text-[11px] font-bold text-[#0f2a71] hover:underline">Bantuan</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= 2. MAIN CONTENT ================= -->
+  <div class="flex-1 min-w-0 flex flex-col relative">
+
+    <!-- Top Navigation Bar -->
+    <header class="h-14 bg-white/95 backdrop-blur border-b border-slate-200/80 sticky top-0 z-30 px-6 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-4 flex-1 max-w-2xl min-w-0">
+        <button onclick="toggleSidebar()" class="md:hidden p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition shrink-0" aria-label="Toggle Sidebar">
+          <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+
+        <nav class="flex items-center text-xs font-medium text-slate-500 shrink-0">
+          <a href="index.html" class="hover:text-slate-800 transition">SIMAS</a>
+          <span class="mx-1.5 text-slate-400 font-normal">&gt;</span>
+          <span class="text-slate-900 font-bold">Workspace</span>
+        </nav>
+
+        <!-- Global Search Input -->
+        <label class="relative flex-1 max-w-md">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+          <input id="global-search-input" type="text" placeholder="Cari kode tiket, kerusakan, ruangan, teknisi... (Ctrl + K)"
+                 class="w-full h-8 rounded-lg bg-[#edf3fb] border border-transparent pl-9 pr-3 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:bg-white focus:border-blue-400 transition">
+        </label>
+      </div>
+
+      <!-- Right Actions & Profile -->
+      <div class="flex items-center gap-4 shrink-0">
+        <button id="btn-header-notif" class="relative text-slate-700 hover:text-slate-900 p-1.5 transition">
+          <i data-lucide="bell" class="w-[18px] h-[18px]"></i>
+          <span class="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-rose-600 ring-2 ring-white"></span>
+        </button>
+
+        <div id="btn-header-profile" class="flex items-center gap-2 select-none">
+          <img 
+            id="header-user-avatar"
+            src="../assets/avatar_bambang.jpg" 
+            onerror="this.src='https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=96&q=80'" 
+            alt="User Avatar" 
+            class="w-7 h-7 rounded-full object-cover ring-1 ring-slate-200"
+          >
+          <div class="text-left leading-tight hidden sm:block">
+            <div id="header-user-name" class="text-xs font-bold text-slate-900 truncate max-w-[150px]"></div>
+            <div id="header-user-role" class="text-[10px] font-medium text-slate-500 truncate"></div>
+          </div>
+        </div>
+        <script>
+          if (window.__SIMAS_USER__) {
+            var _un = document.getElementById('header-user-name');
+            var _ur = document.getElementById('header-user-role');
+            var _ua = document.getElementById('header-user-avatar');
+            if (_un) _un.textContent = window.__SIMAS_USER__.nama || window.__SIMAS_USER__.username || '';
+            if (_ur) _ur.textContent = window.__SIMAS_USER__.roleLabel || window.__SIMAS_USER__.role || '';
+            if (_ua && window.__SIMAS_USER__.avatar) _ua.src = window.__SIMAS_USER__.avatar;
+          }
+        </script>
+        <a href="login.html" title="Keluar / Logout" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition flex items-center gap-1">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="p-5 space-y-4 pb-14 flex-1">
+
+      <!-- ===== PAGE TITLE ROW ===== -->
+      <section class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div>
+          <div class="text-[10px] font-extrabold text-slate-700 tracking-wider uppercase mb-0.5">
+            MODUL LOGISTIK &amp; UTILITAS <span class="text-slate-400 font-normal">→</span> <span class="text-[#0f2a71]">SERVICE DESK</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <h1 class="text-xl font-extrabold text-slate-900 tracking-tight leading-tight">
+              Pemeliharaan &amp; Tiket Perbaikan
+            </h1>
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ccfbf1] text-[#0f766e]">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>SLA Monitoring Aktif</span>
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-500 mt-0.5 max-w-2xl leading-relaxed">
+            Monitoring penanganan kerusakan sarpras, penugasan teknisi lapangan, dan jadwal pemeliharaan preventif gedung secara terintegrasi.
+          </p>
+        </div>
+
+        <!-- Action Buttons Right -->
+        <div class="flex flex-wrap items-center gap-2 shrink-0">
+          <button onclick="openPreventiveModal()" class="h-9 px-3.5 rounded-xl border border-blue-200 bg-white hover:bg-blue-50/60 text-blue-800 text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap">
+            <i data-lucide="calendar-check-2" class="w-3.5 h-3.5 text-blue-600 shrink-0"></i>
+            <span>Jadwal Preventif</span>
+          </button>
+          <button onclick="exportTicketsCSV()" class="h-9 px-3.5 rounded-xl bg-[#e0eefc] hover:bg-[#d0e5fb] text-[#16428c] border border-blue-200/80 text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition whitespace-nowrap">
+            <i data-lucide="download" class="w-3.5 h-3.5 text-[#16428c] shrink-0"></i>
+            <span>Ekspor Rekap CSV</span>
+          </button>
+          <button onclick="openModalBuatTiket()" class="h-9 px-4 rounded-xl bg-[#0f2a71] hover:bg-[#0a1e54] text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition whitespace-nowrap">
+            <i data-lucide="plus-circle" class="w-4 h-4 text-white shrink-0"></i>
+            <span>+ Lapor Kerusakan / Tiket</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ===== STAT CARDS ROW (5 CARDS) ===== -->
+      <section id="stat-cards-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+        <!-- Rendered dynamically by tiket.js -->
+      </section>
+
+      <!-- ===== FILTER & VIEW CONTROLS ROW ===== -->
+      <section class="bg-white rounded-xl border border-slate-200/80 p-2.5 soft-shadow flex flex-wrap items-center justify-between gap-3">
+        <!-- View Toggle (Kanban vs Tabel) -->
+        <div class="flex items-center gap-2">
+          <div class="flex items-center p-1 rounded-xl bg-[#edf3fb] border border-slate-200/60">
+            <button id="btn-view-kanban" class="h-7 px-3 rounded-lg bg-white text-slate-900 shadow-2xs font-bold text-xs inline-flex items-center gap-1.5 transition whitespace-nowrap">
+              <i data-lucide="kanban" class="w-3.5 h-3.5 text-[#0f2a71]"></i>
+              <span>Kanban Board</span>
+            </button>
+            <button id="btn-view-table" class="h-7 px-3 rounded-lg text-slate-600 font-medium text-xs inline-flex items-center gap-1.5 hover:text-slate-900 transition whitespace-nowrap">
+              <i data-lucide="table-2" class="w-3.5 h-3.5 text-slate-500"></i>
+              <span>Riwayat Tabel</span>
+            </button>
+          </div>
+          <span class="hidden xl:inline-flex items-center gap-1 text-[11px] text-slate-500 pl-1">
+            <i data-lucide="mouse-pointer-click" class="w-3.5 h-3.5 text-blue-600"></i>
+            <span>Klik kartu tiket untuk membuka panel rincian &amp; update progres teknisi</span>
+          </span>
+        </div>
+
+        <!-- Filter Dropdowns -->
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Filter Gedung -->
+          <div class="relative">
+            <select id="filter-gedung-select" class="appearance-none h-8 pl-8 pr-7 rounded-lg bg-[#f8fafc] hover:bg-slate-100/80 border border-slate-200 text-xs text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer">
+              <option value="all">Gedung: Semua Gedung</option>
+              <option value="Gedung TI">Gedung TI</option>
+              <option value="Rektorat">Gedung Rektorat</option>
+              <option value="Perpustakaan">Gedung Perpustakaan</option>
+              <option value="Saintek">Gedung Saintek</option>
+              <option value="Gardu Daya">Gardu Daya Timur</option>
+            </select>
+            <i data-lucide="building-2" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+            <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+          </div>
+
+          <!-- Filter Prioritas -->
+          <div class="relative">
+            <select id="filter-prioritas-select" class="appearance-none h-8 pl-8 pr-7 rounded-lg bg-[#f8fafc] hover:bg-slate-100/80 border border-slate-200 text-xs text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer">
+              <option value="all">Prioritas: Semua</option>
+              <option value="URGENT">Prioritas: Urgent</option>
+              <option value="TINGGI">Prioritas: Tinggi</option>
+              <option value="SEDANG">Prioritas: Sedang</option>
+              <option value="RENDAH">Prioritas: Rendah</option>
+            </select>
+            <i data-lucide="flame" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+            <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+          </div>
+
+          <!-- Reset Filter -->
+          <button type="button" onclick="resetTicketFilters()" title="Reset Filter" class="h-8 px-2.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 text-xs font-semibold inline-flex items-center gap-1 transition whitespace-nowrap">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <span>Reset</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ===== MAIN WORKSPACE VIEWS ===== -->
+      
+      <!-- 1. KANBAN BOARD CONTAINER -->
+      <section id="kanban-board-container" class="relative">
+        <div id="kanban-board" class="kanban-container">
+          <!-- Rendered dynamically by tiket.js with 4 columns -->
+        </div>
+      </section>
+
+      <!-- 2. TABLE VIEW CONTAINER -->
+      <section id="table-view-container" class="hidden bg-white rounded-2xl border border-slate-200/90 overflow-hidden soft-shadow">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead class="bg-[#eef3fb] border-b border-slate-200 text-[10px] font-extrabold uppercase text-slate-600 tracking-wider">
+              <tr>
+                <th class="py-3 px-4">Kode Tiket</th>
+                <th class="py-3 px-4">Deskripsi Kerusakan</th>
+                <th class="py-3 px-4">Gedung / Lokasi</th>
+                <th class="py-3 px-4">Prioritas</th>
+                <th class="py-3 px-4">Status Kanban</th>
+                <th class="py-3 px-4">Teknisi / Pelapor</th>
+                <th class="py-3 px-4 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="table-body-tickets" class="divide-y divide-slate-100">
+              <!-- Rendered by tiket.js -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ================= 3. SLIDE-OVER DRAWER (RIGHT PANEL OVERLAY) ================= -->
+  <div id="drawer-backdrop" onclick="closeCompletionDrawer()" class="fixed inset-0 bg-slate-900/30 backdrop-blur-[1px] z-40 hidden"></div>
+
+  <aside id="completion-drawer" class="drawer-panel is-hidden bg-white border-l border-slate-200 shadow-2xl flex flex-col justify-between overflow-hidden">
+    
+    <!-- Drawer Header -->
+    <div class="px-5 py-4 border-b border-slate-100 flex items-start justify-between shrink-0 bg-[#f8fafc] z-10">
+      <div>
+        <span id="drawer-subtitle" class="text-[10px] font-extrabold tracking-wider text-[#0e5c54] uppercase block">LOG PENYELESAIAN SERVIS</span>
+        <h2 id="drawer-ticket-id" class="text-lg font-extrabold text-slate-900 tracking-tight mt-0.5">#TK-2024-1033</h2>
+      </div>
+      <button id="close-drawer-btn" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-100 flex items-center justify-center transition" title="Tutup Panel">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <!-- Form Inputs -->
+    <form id="completion-form" class="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <div class="p-5 space-y-4 overflow-y-auto flex-1">
+        
+        <!-- Problem Brief Summary Card -->
+        <div class="bg-[#edf4fe] border border-blue-200/70 rounded-xl p-3.5 space-y-1.5">
+          <span class="text-[10px] text-blue-800 font-bold uppercase tracking-wider block">Deskripsi Kerusakan</span>
+          <h3 id="drawer-ticket-title" class="text-xs font-extrabold text-slate-900 leading-snug">Rewiring Kabel ATS Genset Utama</h3>
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-600 pt-1">
+            <div class="flex items-center gap-1">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5 text-blue-600 shrink-0"></i>
+              <span id="drawer-ticket-location">Gardu Daya Timur</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <i data-lucide="user" class="w-3.5 h-3.5 text-blue-600 shrink-0"></i>
+              <span id="drawer-ticket-person">Irfan K.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Optional Attachment Preview in Drawer -->
+        <div id="drawer-image-container" class="hidden">
+          <span class="text-[11px] text-slate-600 font-bold block mb-1.5">Lampiran Foto Lapangan:</span>
+          <div class="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+            <img id="drawer-ticket-image" src="" alt="Lampiran Kerusakan" class="w-full h-32 object-cover">
+          </div>
+        </div>
+
+        <!-- Field 1: Tindakan / Solusi yang Dilakukan -->
+        <div>
+          <label class="block text-xs font-bold text-slate-800 mb-1.5">
+            Tindakan / Solusi Teknis yang Dilakukan <span class="text-rose-500">*</span>
+          </label>
+          <textarea id="form-tindakan" rows="3" placeholder="Uraikan detail penanganan teknis yang telah dilaksanakan..."
+                    class="w-full rounded-xl bg-[#f8fafc] border border-slate-200 p-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-500 transition resize-none"></textarea>
+        </div>
+
+        <!-- Field 2 & 3: Biaya Suku Cadang & Jasa Servis -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-800 mb-1">Biaya Suku Cadang (Rp)</label>
+            <input type="text" id="form-biaya-suku" value="450000"
+                   class="w-full h-9 rounded-xl bg-[#f8fafc] border border-slate-200 px-3 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-500 transition">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-800 mb-1">Jasa Servis Eksternal (Rp)</label>
+            <input type="text" id="form-biaya-jasa" value="0"
+                   class="w-full h-9 rounded-xl bg-[#f8fafc] border border-slate-200 px-3 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-500 transition">
+          </div>
+        </div>
+
+        <!-- Field 4: Foto Hasil Perbaikan & Nota Pembelian -->
+        <div>
+          <label class="block text-xs font-bold text-slate-800 mb-1.5">Dokumentasi Hasil &amp; Bukti Nota</label>
+          <div class="grid grid-cols-2 gap-2.5">
+            <div id="upload-box-foto" onclick="toggleDrawerAttachment('foto')" class="bg-[#f8fafc] border border-dashed border-slate-300 hover:border-blue-400 rounded-xl p-3 text-center flex flex-col items-center justify-center gap-1 cursor-pointer transition hover:bg-blue-50/40">
+              <i data-lucide="camera" class="w-4 h-4 text-blue-700"></i>
+              <span id="upload-label-foto" class="text-xs font-bold text-slate-800">Foto Aset Normal</span>
+              <span id="upload-sub-foto" class="text-[10px] text-slate-500">Klik untuk lampirkan JPG/PNG</span>
+            </div>
+
+            <div id="upload-box-nota" onclick="toggleDrawerAttachment('nota')" class="bg-[#f8fafc] border border-dashed border-slate-300 hover:border-blue-400 rounded-xl p-3 text-center flex flex-col items-center justify-center gap-1 cursor-pointer transition hover:bg-blue-50/40">
+              <i data-lucide="receipt" class="w-4 h-4 text-teal-600"></i>
+              <span id="upload-label-nota" class="text-xs font-bold text-slate-800">Unggah Nota Biaya</span>
+              <span id="upload-sub-nota" class="text-[10px] text-slate-500">Klik untuk lampirkan PDF/Struk</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Field 5: Verification Checkbox -->
+        <label class="bg-[#edf4fe]/70 border border-blue-200/70 rounded-xl p-3 flex items-center gap-2.5 cursor-pointer hover:bg-[#e4effd] transition">
+          <input type="checkbox" checked class="custom-checkbox">
+          <span class="text-xs font-semibold text-slate-700 select-none leading-snug">
+            Aset telah melalui pengujian fungsi dan beroperasi normal
+          </span>
+        </label>
+      </div>
+
+      <!-- Action Buttons Pinned at Bottom -->
+      <div class="p-4 border-t border-slate-200 bg-white flex items-center justify-between gap-2 shrink-0 z-10">
+        <button type="button" id="cancel-drawer-btn" class="h-9 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition">
+          Tutup
+        </button>
+        <button type="submit" class="h-9 px-4 rounded-xl bg-[#0f2a71] hover:bg-[#0a1e54] text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm transition">
+          <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+          <span id="drawer-submit-label">Simpan &amp; Ajukan Uji Fungsi</span>
+        </button>
+      </div>
+    </form>
+
+  </aside>
+
+</div>
+
+<!-- Modal Buat Tiket Perbaikan Baru -->
+<div id="modal-buat-tiket" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+          <i data-lucide="wrench" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900">Buat Tiket Perbaikan Baru</h3>
+          <p class="text-[11px] text-slate-500">Laporkan kendala fasilitas atau peralatan sarpras</p>
+        </div>
+      </div>
+      <button onclick="closeModalBuatTiket()" class="text-slate-400 hover:text-slate-700 p-1 rounded-lg">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <form id="form-buat-tiket" onsubmit="handleCreateTicketSubmit(event)" class="p-5 space-y-3.5">
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Pilih Barang / Fasilitas Terkait *</label>
+        <select id="tiket-target-select" onchange="onAdminTicketTargetChange(this)" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 bg-white">
+          <option value="">-- Memuat daftar barang &amp; ruangan... --</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Judul Kerusakan / Permasalahan *</label>
+        <input type="text" id="tiket-title" required placeholder="cth: AC Menetes Freon / Proyektor Mati Total" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600">
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Lokasi / Ruangan *</label>
+          <input type="text" id="tiket-location" required placeholder="cth: Auditorium Senat Lt. 2" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Gedung *</label>
+          <select id="tiket-gedung" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-600/20">
+            <option value="Gedung TI">Gedung TI</option>
+            <option value="Rektorat">Gedung Rektorat (Pusat)</option>
+            <option value="Perpustakaan">Gedung Perpustakaan</option>
+            <option value="Saintek">Gedung Saintek &amp; Lab</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Tingkat Prioritas *</label>
+          <select id="tiket-priority" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none font-bold">
+            <option value="SEDANG" class="text-blue-700">SEDANG</option>
+            <option value="TINGGI" class="text-amber-700">TINGGI</option>
+            <option value="URGENT" class="text-rose-700">URGENT</option>
+            <option value="RENDAH" class="text-slate-500">RENDAH</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Kategori Layanan</label>
+          <select id="tiket-category" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none">
+            <option value="Utilitas AC">Utilitas AC</option>
+            <option value="Multimedia">Multimedia &amp; Proyektor</option>
+            <option value="Kelistrikan">Kelistrikan &amp; Genset</option>
+            <option value="Fasilitas Gedung">Fasilitas Gedung / Pintu</option>
+            <option value="Laboratorium">Alat Laboratorium</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Teknisi Ditugaskan</label>
+          <input type="text" id="tiket-tech" placeholder="Joko Supriyanto, A.Md" value="Joko Supriyanto" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Estimasi Biaya (Rp)</label>
+          <input type="number" id="tiket-cost" placeholder="0" class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Deskripsi Gejala Kerusakan</label>
+        <textarea id="tiket-desc" rows="3" placeholder="Jelaskan kondisi fisik, indikator error, atau kronologi kendala..." class="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 outline-none"></textarea>
+      </div>
+
+      <div class="pt-2 flex items-center justify-end gap-2">
+        <button type="button" onclick="closeModalBuatTiket()" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition">
+          Batal
+        </button>
+        <button type="submit" class="px-4 py-2 rounded-xl bg-[#0f2a71] hover:bg-[#0a1e54] text-white text-xs font-bold shadow-sm transition">
+          Buat Tiket
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="../js/auth.js"></script>
+<script src="../js/rbac.js"></script>
+<script src="../js/navigation.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/tiket.js"></script>
+</body>
+</html>

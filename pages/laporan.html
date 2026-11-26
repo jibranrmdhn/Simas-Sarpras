@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <!-- Early User Session Sync (Mencegah Flash Role saat Load) -->
+  <script>
+    try {
+      window.__SIMAS_USER__ = JSON.parse(localStorage.getItem('simas_current_user') || 'null');
+    } catch (e) {
+      window.__SIMAS_USER__ = null;
+    }
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIMAS - Laporan &amp; Rangkuman Aktivitas Sistem</title>
+  <meta name="description" content="Halaman laporan cetak resmi, rekapitulasi transaksi sarana prasarana, audit BAST, dan rangkuman aktivitas operasional institusi.">
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            navy: {
+              DEFAULT: '#0f2a71',
+              dark: '#091a48',
+              light: '#16428c',
+            },
+            canvas: '#f4f7fb',
+            softblue: '#edf4fe',
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="../css/laporan.css">
+</head>
+<body class="bg-[#f4f7fb] text-slate-800 antialiased min-h-screen flex flex-col md:flex-row">
+
+  <!-- Mobile Sidebar Backdrop Overlay -->
+  <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 hidden md:hidden"></div>
+
+  <!-- ================= LEFT SIDEBAR ================= -->
+  <aside id="main-sidebar" class="w-60 shrink-0 bg-[#f0f5fc] border-r border-slate-200/80 flex flex-col fixed md:sticky top-0 h-screen z-40 -translate-x-full md:translate-x-0 transition-transform duration-300">
+    <!-- Brand / Logo Area -->
+    <div class="px-5 pt-5 pb-3">
+      <div class="flex items-center justify-between">
+        <a href="index.html" class="flex items-center gap-3">
+          <!-- Brand Cube Icon -->
+          <div class="w-9 h-9 rounded-xl bg-[#1342b8] flex items-center justify-center text-white shadow-sm shadow-blue-700/25">
+            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-[15px] font-extrabold tracking-tight text-[#0f2a71] leading-none">SIMAS</h1>
+            <p class="text-[10px] text-slate-500 font-medium mt-1">Sistem Sarana &amp; Prasarana</p>
+          </div>
+        </a>
+        <button onclick="toggleSidebar()" class="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Active Role Info Badge (Static Indicator) -->
+      <div id="role-badge" class="mt-3.5 w-full px-3 py-2.5 bg-[#dbe8fb] rounded-xl flex items-center justify-between text-left select-none">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <i data-lucide="shield-check" class="w-4 h-4 text-[#0f2a71] shrink-0"></i>
+          <div class="leading-tight truncate">
+            <span class="text-[10px] text-slate-600 font-semibold block">Peran Aktif</span>
+            <span id="sidebar-role-label" class="text-xs font-bold text-[#0f2a71] truncate block"></span>
+          </div>
+        </div>
+      </div>
+      <script>
+        if (window.__SIMAS_USER__) {
+          var _r = document.getElementById('sidebar-role-label');
+          if (_r) _r.textContent = window.__SIMAS_USER__.roleLabel || window.__SIMAS_USER__.role || '';
+        }
+      </script>
+    </div>
+
+    <!-- Navigation Menu Items -->
+    <nav class="px-3 mt-2 flex-1 overflow-y-auto">
+      <div class="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+        Menu Operasional
+      </div>
+      <div id="sidebar-menu-list" class="space-y-1">
+        <!-- Rendered dynamically by laporan.js -->
+      </div>
+    </nav>
+
+        <!-- Footer System Info -->
+    <div class="p-3 mt-auto space-y-1.5">
+      <!-- Tombol Logout Sidebar -->
+      <a href="login.html" title="Keluar / Logout" class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition group">
+        <i data-lucide="log-out" class="w-4 h-4 text-rose-500 group-hover:text-rose-700 transition"></i>
+        <span>Keluar dari Sistem</span>
+      </a>
+      <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-[#dbe8fb]">
+        <div class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+          <i data-lucide="badge-check" class="w-3.5 h-3.5 text-teal-600"></i>
+          <span>v2.4.0 (Enterprise)</span>
+        </div>
+        <a href="#" class="text-[11px] font-bold text-[#0f2a71] hover:underline">Bantuan</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN WRAPPER ================= -->
+  <div class="flex-1 flex flex-col min-w-0">
+
+    <!-- Top Header Bar -->
+    <header class="h-14 bg-white/95 backdrop-blur border-b border-slate-200/80 sticky top-0 z-30 px-6 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-4 flex-1 max-w-2xl min-w-0">
+        <button onclick="toggleSidebar()" class="md:hidden p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition shrink-0">
+          <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+
+        <nav class="flex items-center text-xs font-medium text-slate-500 shrink-0">
+          <a href="index.html" class="hover:text-slate-800 transition">SIMAS</a>
+          <span class="mx-1.5 text-slate-400 font-normal">&gt;</span>
+          <span class="text-slate-900 font-bold">Laporan &amp; Rekapitulasi</span>
+        </nav>
+      </div>
+
+      <div class="flex items-center gap-3 shrink-0">
+        <button onclick="window.print()" class="h-8 px-3.5 rounded-lg bg-[#0f2a71] hover:bg-[#0a1e54] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+          <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+          <span>Cetak Dokumen Resmi</span>
+        </button>
+        <!-- Tombol Logout ke Halaman Login -->
+        <a href="login.html" title="Keluar / Logout" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition flex items-center gap-1">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="p-6 space-y-6 flex-1">
+
+      <!-- ================= KOP SURAT RESMI (PRINT ONLY) ================= -->
+      <div class="print-only border-b-2 border-slate-900 pb-4 mb-6">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded bg-blue-900 text-white flex items-center justify-center font-bold text-xl">S</div>
+            <div>
+              <h2 class="text-base font-extrabold text-slate-900 tracking-wider">KEMENTERIAN PENDIDIKAN, KEBUDAYAAN, RISET DAN TEKNOLOGI</h2>
+              <h1 class="text-lg font-black text-slate-900 tracking-tight leading-tight">BIRO PENGELOLAAN SARANA DAN PRASARANA INSTITUSI</h1>
+              <p class="text-xs text-slate-600">Jl. Ringroad Akademik No. 1 • Telp (021) 555-8910 • Email: sarpras@institusi.ac.id</p>
+            </div>
+          </div>
+          <div class="text-right text-xs">
+            <div class="font-bold">KODE DOKUMEN: LAP-SARPRAS/2025/Q1</div>
+            <div class="text-slate-500 mt-1" id="print-date">Tanggal Cetak: 28 Maret 2025</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= PAGE TITLE ROW ================= -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-extrabold uppercase tracking-wider">
+              Audit &amp; Pertanggungjawaban
+            </span>
+            <span class="text-xs text-slate-400 font-semibold">• Periode Semester Berjalan</span>
+          </div>
+          <h1 class="text-2xl font-black text-slate-900 tracking-tight">Laporan &amp; Rangkuman Aktivitas Sistem</h1>
+          <p class="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+            Kompilasi audit transaksi peminjaman sarana, perpindahan mutasi fisik BAST, penyelesaian tiket servis, serta log rekapitulasi aset institusi.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0 no-print">
+          <button onclick="exportReportCSV()" class="h-8 px-3.5 rounded-xl border border-blue-200 bg-white hover:bg-blue-50 text-blue-900 text-xs font-bold flex items-center gap-1.5 transition shadow-2xs">
+            <i data-lucide="download" class="w-3.5 h-3.5 text-blue-700"></i>
+            <span>Export CSV</span>
+          </button>
+          <button onclick="window.print()" class="h-8 px-4 rounded-xl bg-[#0f2a71] hover:bg-[#0a1e54] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+            <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+            <span>Cetak / Print Laporan</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= 4 KPI SUMMARY CARDS ================= -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-xl border border-slate-200/90 card-shadow flex flex-col justify-between">
+          <div class="flex items-start justify-between">
+            <span class="text-xs font-semibold text-slate-500">Total Transaksi Selesai</span>
+            <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+              <i data-lucide="check-circle" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-2">
+            <div class="text-2xl font-extrabold text-slate-900" id="summary-total">1.482</div>
+            <div class="text-[11px] text-emerald-600 font-semibold mt-1">↑ 14% vs triwulan sebelumnya</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200/90 card-shadow flex flex-col justify-between">
+          <div class="flex items-start justify-between">
+            <span class="text-xs font-semibold text-slate-500">Peminjaman Ruang &amp; Aset</span>
+            <div class="w-7 h-7 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center">
+              <i data-lucide="calendar" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-2">
+            <div class="text-2xl font-extrabold text-slate-900">412 Transaksi</div>
+            <div class="text-[11px] text-slate-500 mt-1">96.8% Tepat waktu pengembalian</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200/90 card-shadow flex flex-col justify-between">
+          <div class="flex items-start justify-between">
+            <span class="text-xs font-semibold text-slate-500">BAST Mutasi Tervalidasi</span>
+            <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <i data-lucide="arrow-left-right" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-2">
+            <div class="text-2xl font-extrabold text-slate-900">28 Dokumen</div>
+            <div class="text-[11px] text-indigo-600 font-semibold mt-1">100% Ditandatangani digital</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl border border-slate-200/90 card-shadow flex flex-col justify-between">
+          <div class="flex items-start justify-between">
+            <span class="text-xs font-semibold text-slate-500">Tiket Pemeliharaan Tuntas</span>
+            <div class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+              <i data-lucide="wrench" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-2">
+            <div class="text-2xl font-extrabold text-slate-900">48 Kasus</div>
+            <div class="text-[11px] text-slate-500 mt-1">Rata-rata MTTR: 18,5 Jam</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= CHART.JS SECTION ================= -->
+      <div class="bg-white p-5 rounded-xl border border-slate-200/90 card-shadow">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h3 class="text-sm font-extrabold text-slate-900">Distribusi Transaksi per Kategori (Tahun Berjalan)</h3>
+            <p class="text-xs text-slate-400 mt-0.5">Visualisasi client-side data audit aktivitas sarana prasarana</p>
+          </div>
+          <div class="flex items-center gap-2 no-print">
+            <span class="text-xs font-semibold text-slate-500">Filter Data:</span>
+            <select id="chart-filter-select" onchange="updateReportChart(this.value)" class="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none bg-slate-50 font-semibold cursor-pointer">
+              <option value="all">Semua Aktivitas</option>
+              <option value="peminjaman">Peminjaman</option>
+              <option value="mutasi">Mutasi Aset</option>
+              <option value="tiket">Pemeliharaan &amp; Tiket</option>
+            </select>
+          </div>
+        </div>
+        <div class="relative h-64 w-full">
+          <canvas id="reportActivityChart"></canvas>
+        </div>
+      </div>
+
+      <!-- ================= FILTER CONTROLS FOR TABLE ================= -->
+      <div id="filter-section" class="bg-white p-4 rounded-xl border border-slate-200/90 card-shadow flex flex-wrap items-center justify-between gap-3 no-print">
+        <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+          <div class="relative flex-1 min-w-[200px]">
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input 
+              id="report-search-input" 
+              type="text" 
+              placeholder="Saring kode dokumen, nama sarana, atau PIC..." 
+              class="w-full text-xs pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 transition"
+            >
+          </div>
+
+          <select id="report-type-filter" class="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none bg-white font-semibold text-slate-700 cursor-pointer">
+            <option value="all">Semua Jenis Aktivitas</option>
+            <option value="Mutasi Lokasi">Mutasi Lokasi</option>
+            <option value="Peminjaman">Peminjaman</option>
+            <option value="Reservasi Ruangan">Reservasi Ruangan</option>
+            <option value="Tiket Kerusakan">Tiket Kerusakan</option>
+            <option value="Stock Opname">Stock Opname</option>
+          </select>
+
+          <select id="report-status-filter" class="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none bg-white font-semibold text-slate-700 cursor-pointer">
+            <option value="all">Semua Status</option>
+            <option value="Tersimpan">Tersimpan</option>
+            <option value="Selesai">Selesai</option>
+            <option value="Disetujui">Disetujui</option>
+            <option value="Proses">Dalam Proses</option>
+          </select>
+        </div>
+
+        <button onclick="resetReportFilters()" class="text-xs font-bold text-blue-700 hover:underline flex items-center gap-1">
+          <i data-lucide="rotate-ccw" class="w-3 h-3"></i>
+          <span>Reset Filter</span>
+        </button>
+      </div>
+
+      <!-- ================= AUDIT DETAIL TABLE ================= -->
+      <div class="bg-white p-5 rounded-xl border border-slate-200/90 card-shadow space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-sm font-extrabold text-slate-900">Rangkuman Riwayat Transaksi Sarpras</h3>
+            <p class="text-xs text-slate-400 mt-0.5">Daftar rekonsiliasi dan log resmi operasional kampus</p>
+          </div>
+          <span id="report-count-badge" class="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold">
+            Menampilkan data
+          </span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-200 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <th class="py-3 px-3">Waktu &amp; Tanggal</th>
+                <th class="py-3 px-3">No. Dokumen / NUP</th>
+                <th class="py-3 px-3">Nama Sarana / Prasarana</th>
+                <th class="py-3 px-3">Jenis Transaksi</th>
+                <th class="py-3 px-3">Penanggung Jawab / Unit</th>
+                <th class="py-3 px-3">Status</th>
+                <th class="py-3 px-3 text-right no-print">Tindakan</th>
+              </tr>
+            </thead>
+            <tbody id="report-table-body" class="divide-y divide-slate-100">
+              <!-- Rendered by laporan.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================= TANDA TANGAN PENGESAHAN LAPORAN (PRINT ONLY) ================= -->
+      <div class="print-only pt-10">
+        <div class="flex justify-between items-start text-xs">
+          <div class="text-center w-64">
+            <p>Mengetahui,</p>
+            <p class="font-bold">Kepala Bagian Umum &amp; Sarana Prasarana</p>
+            <div class="h-20"></div>
+            <p class="font-bold underline">Dr. Ir. Hendro Wicaksono, M.T.</p>
+            <p>NIP. 197804152003121002</p>
+          </div>
+
+          <div class="text-center w-64">
+            <p>Petugas Verifikator Sistem,</p>
+            <p class="font-bold">Admin Sarpras Pusat (SIMAS)</p>
+            <div class="h-20"></div>
+            <p class="font-bold underline">Bambang Irawan, S.Kom.</p>
+            <p>NIP. 198403152008121002</p>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+<!-- RBAC & Navigation Scripts -->
+<script src="../js/auth.js"></script>
+<script src="../js/rbac.js"></script>
+<script src="../js/navigation.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/laporan.js"></script>
+</body>
+</html>

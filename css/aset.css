@@ -1,0 +1,154 @@
+/* ===== SIMAS – Manajemen Aset : komponen custom (plain CSS) ===== */
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+.soft-shadow {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 14px rgba(15, 47, 134, 0.04);
+}
+
+/* Tombol biru muda (Cetak Label QR, Import Excel, Export CSV, Filter Lanjut) */
+.btn-soft {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 6px;
+  background: #dde8f8;
+  color: #0f1f4d;
+  font-size: 11px;
+  font-weight: 700;
+  transition: background-color .15s ease, transform .15s ease;
+}
+.btn-soft:hover { background: #cfdef5; }
+.btn-soft:active { transform: translateY(1px); }
+
+/* Toggle Tabel / Grid */
+.view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #334155;
+  transition: all .15s ease;
+}
+.view-btn.is-active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .12);
+}
+
+/* Dropdown filter cepat */
+.quick-select {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 24px;
+  min-width: 104px;
+  padding: 0 26px 0 10px;
+  border-radius: 8px;
+  background-color: #e6edf8;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px top 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #1e293b;
+  cursor: pointer;
+}
+.quick-select:focus { outline: 2px solid rgba(59, 130, 246, .35); }
+
+/* Checkbox */
+.chk {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  accent-color: #102f86;
+  cursor: pointer;
+}
+
+/* Chip kategori */
+.chip-kategori {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid #d5e0f1;
+  background: #e9f0fa;
+  font-size: 10px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+/* Pill kondisi / status */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pill::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: currentColor;
+}
+.pill-baik   { background: #ccf4ec; color: #0f5f52; }
+.pill-cukup  { background: #dfe6f3; color: #334155; }
+.pill-rusak  { background: #fde0e0; color: #b91c1c; }
+.pill-tersedia { background: #ccf4ec; color: #0f5f52; }
+.pill-dipinjam { background: #dbe7fb; color: #1d4ed8; }
+.pill-perawatan { background: #fde9cf; color: #b45309; }
+
+/* Pagination */
+.page-btn {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #334155;
+  transition: background-color .15s ease;
+}
+.page-btn:hover:not(:disabled):not(.is-active) { background: #e2e9f5; }
+.page-btn.is-active {
+  background: #102f86;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(16, 47, 134, .3);
+}
+.page-btn:disabled { color: #94a3b8; cursor: not-allowed; }
+
+/* Baris tabel */
+#asset-table-body tr { transition: background-color .15s ease; }
+#asset-table-body tr:hover { background: #f7faff; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Modal Display Handling */
+#modal-asset-form:not(.hidden),
+#modal-delete-confirm:not(.hidden),
+#modal-qr-preview:not(.hidden) {
+  display: flex !important;
+}
+#modal-asset-form.hidden,
+#modal-delete-confirm.hidden,
+#modal-qr-preview.hidden {
+  display: none !important;
+}

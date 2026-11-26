@@ -1,0 +1,97 @@
+/* =========================================================
+   SIMAS – Peminjaman & Reservasi Sarana : Custom CSS
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@500;700&display=swap');
+
+:root {
+  --primary-navy: #0f2a71;
+  --primary-navy-dark: #091a48;
+  --primary-navy-light: #16428c;
+  --primary-blue: #1d4ed8;
+  --canvas-bg: #f4f7fb;
+  --card-bg: #ffffff;
+  --soft-blue: #edf4fe;
+  --border-subtle: #e2e8f0;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--canvas-bg);
+  color: #1e293b;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Subtle Shadow Utility */
+.card-shadow {
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.03);
+}
+
+.card-elevation {
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-elevation:hover {
+  box-shadow: 0 4px 12px -2px rgba(15, 42, 113, 0.08), 0 2px 4px -2px rgba(15, 42, 113, 0.04);
+}
+
+/* Table Row Active / Selected State */
+.table-row-selected {
+  background-color: #f1f6fe !important;
+  border-left: 3px solid #16428c;
+}
+
+/* Modal Backdrop & Animations */
+.modal-enter {
+  opacity: 0;
+  transform: scale(0.96) translateY(-8px);
+}
+
+.modal-enter-active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition: opacity 0.2s ease-out, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Toast Container */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast-item {
+  pointer-events: auto;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Circular Progress Animation */
+.donut-circle {
+  transition: stroke-dashoffset 0.8s ease-in-out;
+}
