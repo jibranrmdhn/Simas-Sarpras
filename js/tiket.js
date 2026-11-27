@@ -1259,7 +1259,48 @@ function formatCardData(t) {
   };
 }
 
-function buildSyncedPdfKanbanColumns() {
+function formatTicketMonthLabel(value) {
+  const [y, m] = String(value || '').split('-');
+  const names = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  const idx = parseInt(m, 10) - 1;
+  return `${names[idx] || m} ${y}`;
+}
+
+function getTicketMonthOptions(tickets) {
+  const map = new Map();
+  (tickets || []).forEach(t => {
+    const m = String(t.created_at || '').slice(0, 7);
+    if (/^\d{4}-\d{2}$/.test(m) && !map.has(m)) {
+      map.set(m, formatTicketMonthLabel(m));
+    }
+  });
+  return Array.from(map.entries())
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([value, label]) => ({ value, label }));
+}
+
+function formatTicketDate(value) {
+  if (!value) return '';
+  const d = new Date(String(value).replace(' ', 'T'));
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function ticketMatchesPdfFilter(t, f) {
+  const q = String(f && f.q ? f.q : '').trim().toLowerCase();
+  const month = (f && f.month) || 'all';
+  if (month !== 'all') {
+    const created = String(t.created_at || '').slice(0, 7);
+    if (created !== month) return false;
+  }
+  if (!q) return true;
+  const hay = [t.kode, t.title, t.location, t.gedung, t.category, t.tech_name, t.desc, t.asset_nama, t.asset_kode, t.reporter]
+    .join(' ').toLowerCase();
+  return hay.includes(q);
+}
+
+function buildSyncedPdfKanbanColumns(filters = null) {
+  const f = filters || { q: '', month: 'all' };
   const cols = [
     { key: 'antrean', baseTitle: 'Antrean Tiket', headerClass: 'bg-slate-200 text-slate-800 border border-slate-300/70', cards: [] },
     { key: 'proses', baseTitle: 'Sedang Dikerjakan', headerClass: 'bg-blue-100 text-blue-800 border border-blue-200/80', cards: [] },
@@ -1268,9 +1309,11 @@ function buildSyncedPdfKanbanColumns() {
   ];
 
   const seenIds = new Set();
+  const hasBackendTickets = Array.isArray(backendRawTickets) && backendRawTickets.length > 0;
 
   // 1. Live tickets from SQLite backend
   (backendRawTickets || []).forEach(t => {
+    if (!ticketMatchesPdfFilter(t, f)) return;
     const id = t.kode || `TKT-${t.id}`;
     if (seenIds.has(id)) return;
     seenIds.add(id);
@@ -1305,20 +1348,23 @@ function buildSyncedPdfKanbanColumns() {
       priority: colIdx === 3 ? 'SELESAI' : prio,
       priorityClass: prioClass,
       title: t.title || 'Perbaikan Sarana',
+      category: t.category || 'Umum',
       location: t.location || '-',
       gedung: t.gedung || '-',
       techName: t.tech_name || 'Menunggu Penugasan',
       reporter: reporterLabel,
       desc: t.desc || t.title || '-',
       cost: costNum,
+      createdAt: t.created_at || '',
+      updatedAt: t.updated_at || '',
       meta: `${t.location || t.gedung || 'Kampus'} • Pelapor: ${reporterLabel} • Teknisi: ${t.tech_name || 'Menunggu Penugasan'}`,
       footer: t.desc ? String(t.desc).slice(0, 68) : costLabel,
       footerColor: colIdx === 3 ? 'text-emerald-600' : (colIdx === 1 ? 'text-[#1D4ED8]' : 'text-slate-600')
     });
   });
 
-  // 2. Fallback defaults if backend returned no tickets
-  if (seenIds.size === 0) {
+  // 2. Fallback defaults only when backend truly has no tickets
+  if (!hasBackendTickets) {
     pdfKanbanColumnsDefault.forEach((defCol, idx) => {
       defCol.cards.forEach(c => {
         cols[idx].cards.push({
@@ -1341,8 +1387,14 @@ function buildSyncedPdfKanbanColumns() {
   return cols;
 }
 
+let pdfFilterState = { q: '', month: 'all' };
+
+function getFilteredPdfKanbanColumns() {
+  return buildSyncedPdfKanbanColumns(pdfFilterState);
+}
+
 function exportTicketsCSV() {
-  const cols = buildSyncedPdfKanbanColumns();
+  const cols = getFilteredPdfKanbanColumns();
   const allCards = cols.flatMap(col =>
     col.cards.map(card => ({
       ...card,
@@ -1757,6 +1809,9 @@ window.submitPeminjamDamageReport = async function(e) {
   }
 };
 
+let peminjamFilterState = { q: '', month: 'all' };
+let peminjamViewState = { tickets: [], statusMeta: null };
+
 function renderPeminjamDamageReportView(root, user) {
   const myName = String(user?.nama || '').toLowerCase();
   const myShort = myName.split(',')[0].trim();
@@ -1784,6 +1839,8 @@ function renderPeminjamDamageReportView(root, user) {
   const totalCount = myTickets.length;
   const doneCount = myTickets.filter(t => ['selesai', 'closed', 'done'].includes(String(t.status || '').toLowerCase())).length;
   const activeCount = totalCount - doneCount;
+  const monthOptions = getTicketMonthOptions(myTickets);
+  peminjamViewState = { tickets: myTickets, statusMeta };
 
   root.innerHTML = `
     <div class="space-y-5">
@@ -1827,56 +1884,139 @@ function renderPeminjamDamageReportView(root, user) {
           <span class="text-[11px] font-bold text-slate-500">Pelapor: ${escapeTicketHtml(user?.nama || user?.username || 'Peminjam')}</span>
         </div>
 
-        ${myTickets.length === 0 ? `
-          <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-8 text-center space-y-3">
-            <div class="w-11 h-11 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto">
-              <i data-lucide="wrench" class="w-5 h-5"></i>
-            </div>
-            <div>
-              <div class="text-sm font-bold text-slate-900">Belum Ada Laporan Kerusakan</div>
-              <p class="text-xs text-slate-500 mt-1 max-w-md mx-auto">Jika Anda menemukan sarana perkuliahan atau fasilitas ruangan yang bermasalah, klik tombol di bawah untuk langsung melaporkannya ke Petugas Sarpras.</p>
-            </div>
-            <button type="button" onclick="openModalLaporPeminjam()" class="px-4 py-2 rounded-xl bg-[#1246b5] hover:bg-blue-800 text-white text-xs font-bold cursor-pointer transition">
-              + Buat Laporan Kerusakan Pertama
-            </button>
+        <!-- Filter: Pencarian & Bulan -->
+        <div class="flex flex-wrap items-center gap-2 mb-4 pb-4 border-b border-slate-100">
+          <label class="relative flex-1 min-w-[240px]">
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+            <input id="peminjam-report-search" type="text" value="${escapeTicketHtml(peminjamFilterState.q)}" oninput="applyPeminjamFilters()" placeholder="Cari barang rusak, kode tiket, lokasi, kerusakan..." class="w-full h-9 rounded-lg bg-[#f8fafc] border border-slate-200 pl-9 pr-3 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400">
+          </label>
+          <div class="relative">
+            <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+            <select id="peminjam-report-month" onchange="applyPeminjamFilters()" class="appearance-none h-9 pl-9 pr-8 rounded-lg bg-[#f8fafc] border border-slate-200 text-xs text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer">
+              <option value="all">Semua Bulan</option>
+              ${monthOptions.map(o => `<option value="${o.value}" ${peminjamFilterState.month === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}
+            </select>
+            <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
           </div>
-        ` : `
-          <div class="space-y-3">
-            ${myTickets.map(t => {
-              const sm = statusMeta(t.status);
-              const prio = String(t.priority || 'SEDANG').toUpperCase();
-              const prioCls = (prio === 'URGENT' || prio === 'TINGGI')
-                ? 'bg-red-50 text-red-600'
-                : 'bg-amber-50 text-amber-700';
-              const targetChip = t.asset_nama
-                ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-[#1D4ED8] border border-blue-200/70">${escapeTicketHtml(t.asset_kode ? t.asset_kode + ' • ' : '')}${escapeTicketHtml(t.asset_nama)}</span>`
-                : '';
-              return `
-                <div class="rounded-xl border border-slate-200/90 bg-slate-50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div class="space-y-1 min-w-0">
-                    <div class="flex flex-wrap items-center gap-2">
-                      <span class="text-xs font-extrabold text-[#1D4ED8] font-mono">${escapeTicketHtml(t.kode || ('TKT-' + t.id))}</span>
-                      <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${prioCls}">${escapeTicketHtml(prio)}</span>
-                      <span class="px-2.5 py-0.5 rounded-md text-[10px] font-bold ${sm.cls}">${sm.label}</span>
-                      ${targetChip}
-                    </div>
-                    <div class="text-sm font-bold text-slate-900">${escapeTicketHtml(t.title)}</div>
-                    <div class="text-[11px] text-slate-500">
-                      ${escapeTicketHtml(t.location || '-')} (${escapeTicketHtml(t.gedung || '-')}) • Kategori: ${escapeTicketHtml(t.category || 'Umum')} • Teknisi: <strong class="text-slate-700">${escapeTicketHtml(t.tech_name || 'Menunggu Penugasan')}</strong>
-                    </div>
-                    ${t.desc ? `<p class="text-xs text-slate-600 pt-1">${escapeTicketHtml(t.desc)}</p>` : ''}
-                  </div>
-                </div>
-              `;
-            }).join('')}
-          </div>
-        `}
+          <button type="button" onclick="resetPeminjamFilters()" class="h-9 px-3 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 text-xs font-semibold inline-flex items-center gap-1 transition whitespace-nowrap">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <span>Reset</span>
+          </button>
+          <span id="peminjam-report-count" class="text-[11px] font-bold text-slate-500 whitespace-nowrap"></span>
+        </div>
+
+        <div id="peminjam-report-list" class="space-y-3"></div>
       </div>
     </div>
   `;
 
+  applyPeminjamFilters();
   if (window.lucide) lucide.createIcons();
 }
+
+function renderPeminjamReportList() {
+  const listEl = document.getElementById('peminjam-report-list');
+  if (!listEl) return;
+
+  const all = peminjamViewState.tickets || [];
+  const statusMeta = peminjamViewState.statusMeta || (() => ({ label: 'Antrean Petugas', cls: 'bg-slate-200 text-slate-800 border border-slate-300/70' }));
+  const q = String(peminjamFilterState.q || '').trim().toLowerCase();
+  const month = peminjamFilterState.month || 'all';
+
+  const filtered = all.filter(t => {
+    const created = String(t.created_at || '').slice(0, 7);
+    if (month !== 'all' && created !== month) return false;
+    if (!q) return true;
+    const hay = [t.kode, t.title, t.location, t.gedung, t.category, t.tech_name, t.desc, t.asset_nama, t.asset_kode]
+      .join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+
+  const countEl = document.getElementById('peminjam-report-count');
+  if (countEl) countEl.textContent = `Menampilkan ${filtered.length} dari ${all.length} laporan`;
+
+  if (all.length === 0) {
+    listEl.innerHTML = `
+      <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-8 text-center space-y-3">
+        <div class="w-11 h-11 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto">
+          <i data-lucide="wrench" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="text-sm font-bold text-slate-900">Belum Ada Laporan Kerusakan</div>
+          <p class="text-xs text-slate-500 mt-1 max-w-md mx-auto">Jika Anda menemukan sarana perkuliahan atau fasilitas ruangan yang bermasalah, klik tombol di bawah untuk langsung melaporkannya ke Petugas Sarpras.</p>
+        </div>
+        <button type="button" onclick="openModalLaporPeminjam()" class="px-4 py-2 rounded-xl bg-[#1246b5] hover:bg-blue-800 text-white text-xs font-bold cursor-pointer transition">
+          + Buat Laporan Kerusakan Pertama
+        </button>
+      </div>
+    `;
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = `
+      <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-8 text-center space-y-2">
+        <div class="w-11 h-11 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center mx-auto">
+          <i data-lucide="search-x" class="w-5 h-5"></i>
+        </div>
+        <div class="text-sm font-bold text-slate-900">Tidak Ada Laporan yang Cocok</div>
+        <p class="text-xs text-slate-500">Coba kata kunci lain atau pilih bulan "Semua Bulan".</p>
+      </div>
+    `;
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
+
+  listEl.innerHTML = filtered.map(t => {
+    const sm = statusMeta(t.status);
+    const prio = String(t.priority || 'SEDANG').toUpperCase();
+    const prioCls = (prio === 'URGENT' || prio === 'TINGGI')
+      ? 'bg-red-50 text-red-600'
+      : 'bg-amber-50 text-amber-700';
+    const targetChip = t.asset_nama
+      ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-[#1D4ED8] border border-blue-200/70">${escapeTicketHtml(t.asset_kode ? t.asset_kode + ' • ' : '')}${escapeTicketHtml(t.asset_nama)}</span>`
+      : '';
+    const dateLabel = formatTicketDate(t.created_at);
+    return `
+      <div class="rounded-xl border border-slate-200/90 bg-slate-50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="space-y-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs font-extrabold text-[#1D4ED8] font-mono">${escapeTicketHtml(t.kode || ('TKT-' + t.id))}</span>
+            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${prioCls}">${escapeTicketHtml(prio)}</span>
+            <span class="px-2.5 py-0.5 rounded-md text-[10px] font-bold ${sm.cls}">${sm.label}</span>
+            ${targetChip}
+            ${dateLabel ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white text-slate-600 border border-slate-200">${escapeTicketHtml(dateLabel)}</span>` : ''}
+          </div>
+          <div class="text-sm font-bold text-slate-900">${escapeTicketHtml(t.title)}</div>
+          <div class="text-[11px] text-slate-500">
+            ${escapeTicketHtml(t.location || '-')} (${escapeTicketHtml(t.gedung || '-')}) • Kategori: ${escapeTicketHtml(t.category || 'Umum')} • Teknisi: <strong class="text-slate-700">${escapeTicketHtml(t.tech_name || 'Menunggu Penugasan')}</strong>
+          </div>
+          ${t.desc ? `<p class="text-xs text-slate-600 pt-1">${escapeTicketHtml(t.desc)}</p>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  if (window.lucide) lucide.createIcons();
+}
+
+function applyPeminjamFilters() {
+  const qEl = document.getElementById('peminjam-report-search');
+  const mEl = document.getElementById('peminjam-report-month');
+  peminjamFilterState = { q: qEl ? qEl.value : '', month: mEl ? mEl.value : 'all' };
+  renderPeminjamReportList();
+}
+window.applyPeminjamFilters = applyPeminjamFilters;
+
+window.resetPeminjamFilters = function() {
+  peminjamFilterState = { q: '', month: 'all' };
+  const qEl = document.getElementById('peminjam-report-search');
+  const mEl = document.getElementById('peminjam-report-month');
+  if (qEl) qEl.value = '';
+  if (mEl) mEl.value = 'all';
+  renderPeminjamReportList();
+};
 
 function renderPdfTiketView() {
   const mainEl = document.querySelector('main');
@@ -1907,7 +2047,7 @@ function renderPdfTiketView() {
   }
 
   const canManage = typeof hasPermission === 'function' ? hasPermission('maintenance:manage') : true;
-  const columns = buildSyncedPdfKanbanColumns();
+  const monthOptions = getTicketMonthOptions(backendRawTickets);
 
   root.innerHTML = `
     <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-6">
@@ -1929,39 +2069,98 @@ function renderPdfTiketView() {
         </div>
       </div>
 
-      <!-- 4 Kanban Columns -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
-        ${columns.map(col => `
-          <div class="rounded-2xl border border-slate-200/90 bg-slate-50/60 p-3.5 flex flex-col">
-            <div class="px-3.5 py-2.5 rounded-xl text-xs font-bold ${col.headerClass} mb-3">
-              ${col.title}
-            </div>
-            <div class="space-y-3 flex-1">
-              ${col.cards.length === 0 ? `
-                <div class="rounded-xl border border-dashed border-slate-200 bg-white/60 p-4 text-center text-[11px] text-slate-400">
-                  Belum ada tiket pada tahap ini
-                </div>
-              ` : col.cards.map(c => `
-                <div onclick="handlePdfTicketClick('${escapeTicketHtml(c.id)}')" class="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs hover:border-blue-400 transition cursor-pointer">
-                  <div class="flex items-center justify-between gap-2 mb-2">
-                    <span class="text-xs font-bold text-[#1D4ED8]">${escapeTicketHtml(c.id)}</span>
-                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${c.priorityClass}">${escapeTicketHtml(c.priority)}</span>
-                  </div>
-                  ${c.assetBadge ? `<div class="inline-block px-2 py-0.5 rounded bg-blue-50 text-[#1D4ED8] text-[10px] font-bold mb-1.5">${escapeTicketHtml(c.assetBadge)}</div>` : ''}
-                  <h4 class="text-xs font-bold text-slate-900 leading-snug">${escapeTicketHtml(c.title)}</h4>
-                  <p class="text-[11px] text-slate-400 mt-1.5">${escapeTicketHtml(c.meta)}</p>
-                  <div class="text-[11px] font-semibold ${c.footerColor} mt-2.5">${escapeTicketHtml(c.footer)}</div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `).join('')}
+      <!-- Filter Bar: Pencarian & Bulan -->
+      <div class="flex flex-wrap items-center gap-2 mb-4 pb-4 border-b border-slate-100">
+        <label class="relative flex-1 min-w-[240px]">
+          <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+          <input id="pdf-ticket-search" type="text" value="${escapeTicketHtml(pdfFilterState.q)}" oninput="applyPdfFilters()" placeholder="Cari kode tiket, barang rusak, lokasi, teknisi..." class="w-full h-9 rounded-lg bg-[#f8fafc] border border-slate-200 pl-9 pr-3 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400">
+        </label>
+        <div class="relative">
+          <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+          <select id="pdf-ticket-month" onchange="applyPdfFilters()" class="appearance-none h-9 pl-9 pr-8 rounded-lg bg-[#f8fafc] border border-slate-200 text-xs text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer">
+            <option value="all">Semua Bulan</option>
+            ${monthOptions.map(o => `<option value="${o.value}" ${pdfFilterState.month === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}
+          </select>
+          <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+        </div>
+        <button type="button" onclick="resetPdfFilters()" class="h-9 px-3 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 text-xs font-semibold inline-flex items-center gap-1 transition whitespace-nowrap">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+          <span>Reset</span>
+        </button>
+        <span id="pdf-ticket-count" class="text-[11px] font-bold text-slate-500 whitespace-nowrap"></span>
       </div>
+
+      <!-- 4 Kanban Columns -->
+      <div id="simas-pdf-board-area"></div>
     </div>
   `;
 
+  renderPdfBoardArea();
   if (window.lucide) lucide.createIcons();
 }
+
+function renderPdfBoardArea() {
+  const area = document.getElementById('simas-pdf-board-area');
+  if (!area) return;
+
+  const columns = buildSyncedPdfKanbanColumns(pdfFilterState);
+
+  area.innerHTML = `
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+      ${columns.map(col => `
+        <div class="rounded-2xl border border-slate-200/90 bg-slate-50/60 p-3.5 flex flex-col">
+          <div class="px-3.5 py-2.5 rounded-xl text-xs font-bold ${col.headerClass} mb-3">
+            ${col.title}
+          </div>
+          <div class="space-y-3 flex-1">
+            ${col.cards.length === 0 ? `
+              <div class="rounded-xl border border-dashed border-slate-200 bg-white/60 p-4 text-center text-[11px] text-slate-400">
+                Belum ada tiket pada tahap ini
+              </div>
+            ` : col.cards.map(c => `
+              <div onclick="handlePdfTicketClick('${escapeTicketHtml(c.id)}')" class="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs hover:border-blue-400 transition cursor-pointer">
+                <div class="flex items-center justify-between gap-2 mb-2">
+                  <span class="text-xs font-bold text-[#1D4ED8]">${escapeTicketHtml(c.id)}</span>
+                  <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${c.priorityClass}">${escapeTicketHtml(c.priority)}</span>
+                </div>
+                ${c.assetBadge ? `<div class="inline-block px-2 py-0.5 rounded bg-blue-50 text-[#1D4ED8] text-[10px] font-bold mb-1.5">${escapeTicketHtml(c.assetBadge)}</div>` : ''}
+                <h4 class="text-xs font-bold text-slate-900 leading-snug">${escapeTicketHtml(c.title)}</h4>
+                <p class="text-[11px] text-slate-400 mt-1.5">${escapeTicketHtml(c.meta)}</p>
+                <div class="text-[11px] font-semibold ${c.footerColor} mt-2.5">${escapeTicketHtml(c.footer)}</div>
+                ${c.createdAt ? `<div class="text-[10px] text-slate-400 mt-1.5">${escapeTicketHtml(formatTicketDate(c.createdAt))}</div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  const total = columns.reduce((sum, col) => sum + col.cards.length, 0);
+  const allTotal = Array.isArray(backendRawTickets) ? backendRawTickets.length : 0;
+  const countEl = document.getElementById('pdf-ticket-count');
+  if (countEl) {
+    countEl.textContent = `Menampilkan ${total} dari ${allTotal} tiket`;
+  }
+
+  if (window.lucide) lucide.createIcons();
+}
+
+window.applyPdfFilters = function() {
+  const qEl = document.getElementById('pdf-ticket-search');
+  const mEl = document.getElementById('pdf-ticket-month');
+  pdfFilterState = { q: qEl ? qEl.value : '', month: mEl ? mEl.value : 'all' };
+  renderPdfBoardArea();
+};
+
+window.resetPdfFilters = function() {
+  pdfFilterState = { q: '', month: 'all' };
+  const qEl = document.getElementById('pdf-ticket-search');
+  const mEl = document.getElementById('pdf-ticket-month');
+  if (qEl) qEl.value = '';
+  if (mEl) mEl.value = 'all';
+  renderPdfBoardArea();
+};
 
 document.addEventListener('DOMContentLoaded', () => {
   const btnTambah = document.getElementById('btn-tambah-aksi');
